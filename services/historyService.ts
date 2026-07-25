@@ -24,25 +24,13 @@ export const historyService = {
     audioBlob: Blob,
     filename = "audio.wav"
   ): Promise<Record<string, unknown>> {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("access_token")
-        : null;
     const formData = new FormData();
     formData.append("file", audioBlob, filename);
 
-    const { data: responseData } = await (
-      await import("axios")
-    ).default.post<{ success: boolean; data: Record<string, unknown> }>(
-      `${process.env.NEXT_PUBLIC_API_URL ?? "https://careflow-workflow-orchestrator.up.railway.app"}/api/v1/encounters/${encounterId}/history/audio`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        timeout: 60000,
-      }
+    const api = createFormDataApi();
+    const { data: responseData } = await api.post<{ success: boolean; data: Record<string, unknown> }>(
+      `/encounters/${encounterId}/history/audio`,
+      formData
     );
     return responseData.data ?? {};
   },

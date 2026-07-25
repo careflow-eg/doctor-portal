@@ -1,7 +1,4 @@
-import axios from "axios";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://careflow-workflow-orchestrator.up.railway.app";
-const API_PREFIX = "/api/v1";
+import { createFormDataApi } from "@/lib/api";
 
 export const radiologyService = {
   async uploadRadiologyImage(
@@ -9,23 +6,14 @@ export const radiologyService = {
     file: File,
     onProgress?: (progress: number) => void
   ): Promise<Record<string, unknown>> {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("access_token")
-        : null;
-
     const formData = new FormData();
     formData.append("file", file);
 
-    const { data } = await axios.post<{ success: boolean; data: Record<string, unknown> }>(
-      `${BASE_URL}${API_PREFIX}/encounters/${encounterId}/radiology`,
+    const api = createFormDataApi();
+    const { data } = await api.post<{ success: boolean; data: Record<string, unknown> }>(
+      `/encounters/${encounterId}/radiology`,
       formData,
       {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        timeout: 120000,
         onUploadProgress: (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const pct = Math.round(
