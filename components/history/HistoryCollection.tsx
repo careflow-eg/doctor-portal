@@ -50,13 +50,13 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
       const data = await historyService.startHistorySession(encounterId);
       setSessionStarted(true);
 
-      // Extract initial question from REST response
+      // Prioritize Arabic initial question from backend
       const initialQuestion =
-        (data as Record<string, string>).initial_question_english ||
         (data as Record<string, string>).initial_question_arabic ||
+        (data as Record<string, string>).initial_question_english ||
         (data as Record<string, string>).question ||
         (data as Record<string, string>).message ||
-        "Hello! What symptom or medical concern brings you in today?";
+        "أهلاً بك. ايه العرض أو المشكلة الطبية اللي بتعاني منها النهاردة؟";
 
       setCurrentQuestion(initialQuestion);
       addAssistantMessage(initialQuestion);
@@ -81,22 +81,24 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
     setText("");
     setIsSending(true);
 
-    // 1. Add patient turn to transcript UI
+    // Add patient turn to UI
     addPatientMessage(userText);
 
-    // 2. Send via WS if connected
+    // If WebSocket is connected, send via WebSocket stream (WS onmessage handles AI response)
     if (connectionState === "connected") {
       sendTextWS(userText);
+      setIsSending(false);
+      return;
     }
 
-    // 3. Process turn via REST API
+    // Otherwise, fallback to REST turn API
     try {
       const data = await historyService.processTextTurn(encounterId, userText);
 
-      // Extract AI's next question from response
+      // Prioritize Arabic next question from backend
       const nextQuestion =
-        (data as Record<string, string>).next_question_english ||
         (data as Record<string, string>).next_question_arabic ||
+        (data as Record<string, string>).next_question_english ||
         (data as Record<string, string>).next_question ||
         (data as Record<string, string>).question ||
         (data as Record<string, string>).message;
@@ -137,8 +139,8 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
             addNotification({ type: "info", title: "Audio response sent" });
 
             const nextQuestion =
-              (data as Record<string, string>).next_question_english ||
               (data as Record<string, string>).next_question_arabic ||
+              (data as Record<string, string>).next_question_english ||
               (data as Record<string, string>).next_question;
 
             if (nextQuestion) {
@@ -249,8 +251,8 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
             exit={{ opacity: 0 }}
             className="glass-card rounded-2xl border border-careflow-teal/30 bg-careflow-teal/5 px-5 py-4"
           >
-            <p className="text-xs font-semibold text-careflow-teal mb-1 uppercase tracking-wider">AI Question</p>
-            <p className="text-sm font-semibold text-foreground">{currentQuestion}</p>
+            <p className="text-xs font-semibold text-careflow-teal mb-1 uppercase tracking-wider">سؤال الذكاء الاصطناعي</p>
+            <p className="text-sm font-semibold text-foreground font-sans">{currentQuestion}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -289,8 +291,9 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendText()}
-            placeholder="Type patient's response or use voice..."
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+            placeholder="اكتب إجابة المريض أو استخدم الصوت..."
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none text-right"
+            dir="auto"
             disabled={isSending}
           />
 

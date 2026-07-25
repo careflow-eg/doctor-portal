@@ -23,6 +23,29 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
 
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
+  const addAssistantMessage = useCallback((content: string) => {
+    if (!content) return;
+    setCurrentQuestion(content);
+    setTranscript((prev) => {
+      const last = prev[prev.length - 1];
+      if (last && last.role === "assistant" && last.content === content) {
+        return prev;
+      }
+      return [
+        ...prev,
+        { role: "assistant", content, timestamp: new Date().toISOString() },
+      ];
+    });
+  }, []);
+
+  const addPatientMessage = useCallback((content: string) => {
+    if (!content) return;
+    setTranscript((prev) => [
+      ...prev,
+      { role: "patient", content, timestamp: new Date().toISOString() },
+    ]);
+  }, []);
+
   const connect = useCallback(() => {
     if (ws.current?.readyState === WebSocket.OPEN) return;
 
@@ -41,12 +64,12 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
       try {
         const data = JSON.parse(event.data);
 
-        // Helper to extract question text from various backend field structures
+        // Prioritize Arabic question fields from backend
         const questionText =
-          data.next_question_english ||
-          data.initial_question_english ||
           data.next_question_arabic ||
           data.initial_question_arabic ||
+          data.next_question_english ||
+          data.initial_question_english ||
           data.next_question ||
           data.question ||
           data.message;
@@ -58,24 +81,16 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
         }
 
         if (questionText) {
-          setCurrentQuestion(questionText);
-          setTranscript((prev) => [
-            ...prev,
-            { role: "assistant", content: questionText, timestamp: new Date().toISOString() },
-          ]);
+          addAssistantMessage(questionText);
         }
 
-        if (data.transcript && Array.isArray(data.transcript)) {
+        if (data.transcript && Array.isArray(data.transcript) && data.transcript.length > 0) {
           setTranscript(data.transcript);
         }
       } catch {
         if (event.data) {
           const textMsg = String(event.data);
-          setCurrentQuestion(textMsg);
-          setTranscript((prev) => [
-            ...prev,
-            { role: "assistant", content: textMsg, timestamp: new Date().toISOString() },
-          ]);
+          addAssistantMessage(textMsg);
         }
       }
     };
@@ -90,7 +105,7 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
         setConnectionState("disconnected");
       }
     };
-  }, [encounterId, token, connectionState]);
+  }, [encounterId, token, connectionState, addAssistantMessage]);
 
   const disconnect = useCallback(() => {
     ws.current?.close();
@@ -102,21 +117,6 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({ text, user_input: text }));
     }
-  }, []);
-
-  const addAssistantMessage = useCallback((content: string) => {
-    setCurrentQuestion(content);
-    setTranscript((prev) => [
-      ...prev,
-      { role: "assistant", content, timestamp: new Date().toISOString() },
-    ]);
-  }, []);
-
-  const addPatientMessage = useCallback((content: string) => {
-    setTranscript((prev) => [
-      ...prev,
-      { role: "patient", content, timestamp: new Date().toISOString() },
-    ]);
   }, []);
 
   useEffect(() => {

@@ -59,6 +59,7 @@ export function TranscriptTimeline({ entries }: TranscriptTimelineProps) {
                     ? "bg-careflow-blue/10 text-foreground rounded-tr-sm"
                     : "bg-careflow-teal/10 text-foreground rounded-tl-sm"
                 )}
+                dir="auto"
               >
                 {entry.content}
               </div>
