@@ -1,7 +1,21 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+      },
+    ],
+  },
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts"],
+  },
 };
 
 export default nextConfig;
