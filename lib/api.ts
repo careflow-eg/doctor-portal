@@ -56,7 +56,7 @@ export function createFormDataApi() {
       "Content-Type": "multipart/form-data",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    timeout: 120000, // 2 min for file uploads
+    timeout: 300000, // 5 min for large file uploads
   });
 }
 
