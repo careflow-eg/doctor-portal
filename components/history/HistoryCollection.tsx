@@ -20,6 +20,7 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
   const [isRecording, setIsRecording] = useState(false);
   const [sessionStarted, setSessionStarted] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
@@ -28,11 +29,14 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
   const {
     connectionState,
     currentQuestion,
+    setCurrentQuestion,
     transcript,
     error,
     connect,
     disconnect,
-    sendText,
+    sendTextWS,
+    addAssistantMessage,
+    addPatientMessage,
   } = useHistoryWebSocket({ encounterId });
 
   // Auto-scroll transcript
@@ -43,30 +47,79 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
   const handleStart = async () => {
     setIsStarting(true);
     try {
-      await historyService.startHistorySession(encounterId);
+      const data = await historyService.startHistorySession(encounterId);
       setSessionStarted(true);
+
+      // Extract initial question from REST response
+      const initialQuestion =
+        (data as Record<string, string>).initial_question_english ||
+        (data as Record<string, string>).initial_question_arabic ||
+        (data as Record<string, string>).question ||
+        (data as Record<string, string>).message ||
+        "Hello! What symptom or medical concern brings you in today?";
+
+      setCurrentQuestion(initialQuestion);
+      addAssistantMessage(initialQuestion);
+
       connect();
-      addNotification({ type: "success", title: "History session started", message: "AI interviewer is ready." });
+      addNotification({
+        type: "success",
+        title: "History session started",
+        message: "AI interviewer is ready.",
+      });
     } catch {
-      addNotification({ type: "error", title: "Failed to start session" });
+      addNotification({ type: "error", title: "Failed to start history session" });
     } finally {
       setIsStarting(false);
     }
   };
 
-  const handleSendText = () => {
-    if (!text.trim()) return;
-    sendText(text.trim());
+  const handleSendText = async () => {
+    const userText = text.trim();
+    if (!userText || isSending) return;
+
     setText("");
+    setIsSending(true);
+
+    // 1. Add patient turn to transcript UI
+    addPatientMessage(userText);
+
+    // 2. Send via WS if connected
+    if (connectionState === "connected") {
+      sendTextWS(userText);
+    }
+
+    // 3. Process turn via REST API
+    try {
+      const data = await historyService.processTextTurn(encounterId, userText);
+
+      // Extract AI's next question from response
+      const nextQuestion =
+        (data as Record<string, string>).next_question_english ||
+        (data as Record<string, string>).next_question_arabic ||
+        (data as Record<string, string>).next_question ||
+        (data as Record<string, string>).question ||
+        (data as Record<string, string>).message;
+
+      if (nextQuestion) {
+        addAssistantMessage(nextQuestion);
+      }
+    } catch {
+      addNotification({
+        type: "error",
+        title: "Error processing turn",
+        message: "Could not send response to AI.",
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleVoiceToggle = async () => {
     if (isRecording) {
-      // Stop recording
       mediaRecorder.current?.stop();
       setIsRecording(false);
     } else {
-      // Start recording
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const recorder = new MediaRecorder(stream);
@@ -80,8 +133,17 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
           const blob = new Blob(audioChunks.current, { type: "audio/wav" });
           stream.getTracks().forEach((t) => t.stop());
           try {
-            await historyService.processAudioTurn(encounterId, blob);
+            const data = await historyService.processAudioTurn(encounterId, blob);
             addNotification({ type: "info", title: "Audio response sent" });
+
+            const nextQuestion =
+              (data as Record<string, string>).next_question_english ||
+              (data as Record<string, string>).next_question_arabic ||
+              (data as Record<string, string>).next_question;
+
+            if (nextQuestion) {
+              addAssistantMessage(nextQuestion);
+            }
           } catch {
             addNotification({ type: "error", title: "Audio upload failed" });
           }
@@ -114,15 +176,15 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
     disconnected: "text-muted-foreground",
     connecting: "text-amber-500",
     connected: "text-emerald-500",
-    error: "text-destructive",
+    error: "text-amber-500",
     completed: "text-careflow-teal",
   };
 
   const statusLabels = {
-    disconnected: "Not connected",
+    disconnected: "REST Mode",
     connecting: "Connecting...",
-    connected: "Connected",
-    error: "Connection error",
+    connected: "Real-time Live",
+    error: "REST Fallback",
     completed: "Interview complete",
   };
 
@@ -136,7 +198,7 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
           </div>
           <div>
             <h2 className="font-semibold text-foreground">AI History Collection</h2>
-            <div className={cn("flex items-center gap-1.5 text-xs", statusColors[connectionState])}>
+            <div className={cn("flex items-center gap-1.5 text-xs font-medium", statusColors[connectionState])}>
               {connectionState === "connected" ? (
                 <Wifi className="h-3 w-3" />
               ) : (
@@ -152,7 +214,7 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
             <button
               onClick={handleStart}
               disabled={isStarting}
-              className="flex items-center gap-2 rounded-xl bg-careflow-teal hover:bg-careflow-teal-hover text-white px-4 py-2 text-sm font-medium transition-all disabled:opacity-60"
+              className="flex items-center gap-2 rounded-xl bg-careflow-teal hover:bg-careflow-teal-hover text-white px-4 py-2 text-sm font-medium transition-all disabled:opacity-60 shadow-md"
             >
               {isStarting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -165,7 +227,7 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
             <button
               onClick={handleFinish}
               disabled={isFinishing}
-              className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-medium transition-all disabled:opacity-60"
+              className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-medium transition-all disabled:opacity-60 shadow-md"
             >
               {isFinishing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -178,7 +240,7 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
         </div>
       </div>
 
-      {/* Current question */}
+      {/* Current question banner */}
       <AnimatePresence>
         {currentQuestion && (
           <motion.div
@@ -187,7 +249,7 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
             exit={{ opacity: 0 }}
             className="glass-card rounded-2xl border border-careflow-teal/30 bg-careflow-teal/5 px-5 py-4"
           >
-            <p className="text-xs font-medium text-careflow-teal mb-1">Current Question</p>
+            <p className="text-xs font-semibold text-careflow-teal mb-1 uppercase tracking-wider">AI Question</p>
             <p className="text-sm font-semibold text-foreground">{currentQuestion}</p>
           </motion.div>
         )}
@@ -195,8 +257,8 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
 
       {/* Error */}
       {error && (
-        <div className="rounded-xl bg-destructive/10 border border-destructive/30 px-4 py-3 text-sm text-destructive">
-          {error}
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-2.5 text-xs text-amber-700 dark:text-amber-400">
+          Note: {error}
         </div>
       )}
 
@@ -207,7 +269,7 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
       </div>
 
       {/* Input area */}
-      {sessionStarted && connectionState === "connected" && (
+      {sessionStarted && connectionState !== "completed" && (
         <div className="glass-card rounded-2xl border border-border p-4 flex items-center gap-3">
           <button
             onClick={handleVoiceToggle}
@@ -229,14 +291,19 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendText()}
             placeholder="Type patient's response or use voice..."
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+            disabled={isSending}
           />
 
           <button
             onClick={handleSendText}
-            disabled={!text.trim()}
+            disabled={!text.trim() || isSending}
             className="h-10 w-10 rounded-xl bg-careflow-teal hover:bg-careflow-teal-hover text-white flex items-center justify-center shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <Send className="h-4 w-4" />
+            {isSending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </button>
         </div>
       )}

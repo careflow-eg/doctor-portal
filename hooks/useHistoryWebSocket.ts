@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { HistoryEvent, TranscriptEntry } from "@/types/dashboard";
 
-const WS_BASE = (process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000").replace("http://", "ws://").replace("https://", "wss://");
+const WS_BASE = (process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000")
+  .replace("http://", "ws://")
+  .replace("https://", "wss://");
 
 type ConnectionState = "disconnected" | "connecting" | "connected" | "error" | "completed";
 
@@ -37,51 +39,42 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
 
     socket.onmessage = (event) => {
       try {
-        const data: HistoryEvent = JSON.parse(event.data);
+        const data = JSON.parse(event.data);
 
-        switch (data.type) {
-          case "connected":
-            setConnectionState("connected");
-            break;
-          case "next_question":
-            if (data.question) {
-              setCurrentQuestion(data.question);
-              setTranscript((prev) => [
-                ...prev,
-                { role: "assistant", content: data.question!, timestamp: new Date().toISOString() },
-              ]);
-            }
-            break;
-          case "transcript":
-            if (data.transcript) {
-              setTranscript(data.transcript);
-            }
-            break;
-          case "interview_completed":
-            setConnectionState("completed");
-            setCurrentQuestion("Interview completed. Thank you!");
-            break;
-          case "error":
-            setError(data.message ?? "Unknown error");
-            setConnectionState("error");
-            break;
-          default:
-            // Handle raw text questions
-            if (data.message) {
-              setCurrentQuestion(data.message);
-              setTranscript((prev) => [
-                ...prev,
-                { role: "assistant", content: data.message!, timestamp: new Date().toISOString() },
-              ]);
-            }
+        // Helper to extract question text from various backend field structures
+        const questionText =
+          data.next_question_english ||
+          data.initial_question_english ||
+          data.next_question_arabic ||
+          data.initial_question_arabic ||
+          data.next_question ||
+          data.question ||
+          data.message;
+
+        if (data.type === "interview_completed" || data.status === "COMPLETED") {
+          setConnectionState("completed");
+          if (questionText) setCurrentQuestion(questionText);
+          return;
         }
-      } catch {
-        // Non-JSON message — treat as question text
-        if (event.data) {
-          setCurrentQuestion(String(event.data));
+
+        if (questionText) {
+          setCurrentQuestion(questionText);
           setTranscript((prev) => [
             ...prev,
-            { role: "assistant", content: String(event.data), timestamp: new Date().toISOString() },
+            { role: "assistant", content: questionText, timestamp: new Date().toISOString() },
+          ]);
+        }
+
+        if (data.transcript && Array.isArray(data.transcript)) {
+          setTranscript(data.transcript);
+        }
+      } catch {
+        if (event.data) {
+          const textMsg = String(event.data);
+          setCurrentQuestion(textMsg);
+          setTranscript((prev) => [
+            ...prev,
+            { role: "assistant", content: textMsg, timestamp: new Date().toISOString() },
           ]);
         }
       }
@@ -89,7 +82,7 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
 
     socket.onerror = () => {
       setConnectionState("error");
-      setError("WebSocket connection failed. Check that the backend is running.");
+      setError("WebSocket fallback to REST active.");
     };
 
     socket.onclose = () => {
@@ -105,15 +98,25 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
     setConnectionState("disconnected");
   }, []);
 
-  const sendText = useCallback((text: string) => {
+  const sendTextWS = useCallback((text: string) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type: "text", text }));
-      // Optimistically add to transcript
-      setTranscript((prev) => [
-        ...prev,
-        { role: "patient", content: text, timestamp: new Date().toISOString() },
-      ]);
+      ws.current.send(JSON.stringify({ text, user_input: text }));
     }
+  }, []);
+
+  const addAssistantMessage = useCallback((content: string) => {
+    setCurrentQuestion(content);
+    setTranscript((prev) => [
+      ...prev,
+      { role: "assistant", content, timestamp: new Date().toISOString() },
+    ]);
+  }, []);
+
+  const addPatientMessage = useCallback((content: string) => {
+    setTranscript((prev) => [
+      ...prev,
+      { role: "patient", content, timestamp: new Date().toISOString() },
+    ]);
   }, []);
 
   useEffect(() => {
@@ -122,5 +125,17 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoConnect]);
 
-  return { connectionState, currentQuestion, transcript, error, connect, disconnect, sendText };
+  return {
+    connectionState,
+    currentQuestion,
+    setCurrentQuestion,
+    transcript,
+    setTranscript,
+    error,
+    connect,
+    disconnect,
+    sendTextWS,
+    addAssistantMessage,
+    addPatientMessage,
+  };
 }
