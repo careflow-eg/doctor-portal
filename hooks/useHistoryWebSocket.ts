@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { HistoryEvent, TranscriptEntry } from "@/types/dashboard";
 
-const WS_BASE = (process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000")
+const WS_BASE = (process.env.NEXT_PUBLIC_WS_URL ?? "wss://careflow-workflow-orchestrator.up.railway.app")
   .replace("http://", "ws://")
   .replace("https://", "wss://");
 

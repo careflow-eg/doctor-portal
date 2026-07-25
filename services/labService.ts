@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://careflow-workflow-orchestrator.up.railway.app";
 const API_PREFIX = "/api/v1";
 
 export const labService = {

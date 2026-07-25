@@ -34,7 +34,7 @@ export const historyService = {
     const { data: responseData } = await (
       await import("axios")
     ).default.post<{ success: boolean; data: Record<string, unknown> }>(
-      `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/v1/encounters/${encounterId}/history/audio`,
+      `${process.env.NEXT_PUBLIC_API_URL ?? "https://careflow-workflow-orchestrator.up.railway.app"}/api/v1/encounters/${encounterId}/history/audio`,
       formData,
       {
         headers: {
