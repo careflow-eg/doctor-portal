@@ -52,7 +52,7 @@ export function EncounterDetailClient({ id }: { id: string }) {
       href: `/encounters/${id}/dashboard`,
       label: "Clinical Dashboard",
       icon: BarChart2,
-      available: encounter.status === "HISTORY_COMPLETED" || encounter.status === "DASHBOARD_GENERATED" || encounter.status === "COMPLETED",
+      available: encounter.status !== "CREATED" && encounter.status !== "HISTORY_IN_PROGRESS",
       color: "text-purple-500",
     },
     {
