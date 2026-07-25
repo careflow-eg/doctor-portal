@@ -2,7 +2,7 @@
 
 import { SuggestedAction } from "@/types/dashboard";
 import { Zap } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatText } from "@/lib/utils";
 
 interface SuggestedActionsProps {
   actions: SuggestedAction[];
@@ -17,7 +17,9 @@ const priorityConfig = {
 export function SuggestedActions({ actions }: SuggestedActionsProps) {
   const sorted = [...actions].sort((a, b) => {
     const order = { high: 0, medium: 1, low: 2 };
-    return (order[a.priority ?? "low"] ?? 2) - (order[b.priority ?? "low"] ?? 2);
+    const pA = (typeof a.priority === "string" ? a.priority.toLowerCase() : "low") as keyof typeof order;
+    const pB = (typeof b.priority === "string" ? b.priority.toLowerCase() : "low") as keyof typeof order;
+    return (order[pA] ?? 2) - (order[pB] ?? 2);
   });
 
   return (
@@ -35,7 +37,8 @@ export function SuggestedActions({ actions }: SuggestedActionsProps) {
       ) : (
         <div className="space-y-2.5">
           {sorted.map((action, i) => {
-            const priority = priorityConfig[action.priority ?? "low"] ?? priorityConfig.low;
+            const priorityKey = (typeof action.priority === "string" ? action.priority.toLowerCase() : "low") as keyof typeof priorityConfig;
+            const priority = priorityConfig[priorityKey] ?? priorityConfig.low;
             return (
               <div
                 key={i}
@@ -47,13 +50,13 @@ export function SuggestedActions({ actions }: SuggestedActionsProps) {
                 <div className={cn("h-2.5 w-2.5 rounded-full mt-1.5 shrink-0", priority.dot)} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <p className="text-sm font-semibold text-foreground">{action.action}</p>
+                    <p className="text-sm font-semibold text-foreground">{formatText(action.action)}</p>
                     <span className="text-[10px] text-muted-foreground">
                       {priority.label} priority
                     </span>
                   </div>
                   {action.rationale && (
-                    <p className="text-xs text-muted-foreground">{action.rationale}</p>
+                    <p className="text-xs text-muted-foreground">{formatText(action.rationale)}</p>
                   )}
                 </div>
               </div>

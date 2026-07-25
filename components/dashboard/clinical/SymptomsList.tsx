@@ -2,7 +2,7 @@
 
 import { Symptom } from "@/types/dashboard";
 import { Activity } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatText } from "@/lib/utils";
 
 interface SymptomsListProps {
   symptoms: Symptom[];
@@ -30,20 +30,24 @@ export function SymptomsList({ symptoms }: SymptomsListProps) {
       ) : (
         <div className="space-y-3">
           {symptoms.map((symptom, i) => {
-            const severity = symptom.severity ?? "mild";
-            const config = severityConfig[severity] ?? severityConfig.mild;
+            const severityKey = (typeof symptom.severity === "string" ? symptom.severity.toLowerCase() : "mild") as keyof typeof severityConfig;
+            const config = severityConfig[severityKey] ?? severityConfig.mild;
+            const nameText = formatText(symptom.name);
+            const durationText = formatText(symptom.duration);
+            const onsetText = formatText(symptom.onset);
+
             return (
               <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <p className="text-sm font-medium text-foreground">{symptom.name}</p>
+                    <p className="text-sm font-medium text-foreground">{nameText}</p>
                     <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", config.badge)}>
                       {config.label}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {symptom.duration && <span>Duration: {symptom.duration}</span>}
-                    {symptom.onset && <span>· Onset: {symptom.onset}</span>}
+                    {durationText && <span>Duration: {durationText}</span>}
+                    {onsetText && <span>· Onset: {onsetText}</span>}
                   </div>
                   {symptom.confidence !== undefined && (
                     <div className="mt-2">

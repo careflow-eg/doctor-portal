@@ -2,6 +2,7 @@
 
 import { RadiologyInsight } from "@/types/dashboard";
 import { ImageIcon } from "lucide-react";
+import { formatText } from "@/lib/utils";
 
 interface RadiologyInsightsProps {
   insights: RadiologyInsight[];
@@ -25,11 +26,11 @@ export function RadiologyInsights({ insights }: RadiologyInsightsProps) {
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-purple-50 dark:bg-purple-950/20 border-b border-border">
                   {insight.modality && (
                     <span className="text-xs font-semibold text-purple-700 dark:text-purple-400">
-                      {insight.modality}
+                      {formatText(insight.modality)}
                     </span>
                   )}
                   {insight.body_part && (
-                    <span className="text-xs text-muted-foreground">· {insight.body_part}</span>
+                    <span className="text-xs text-muted-foreground">· {formatText(insight.body_part)}</span>
                   )}
                   {insight.confidence !== undefined && (
                     <span className="ml-auto text-xs text-muted-foreground">
@@ -42,19 +43,19 @@ export function RadiologyInsights({ insights }: RadiologyInsightsProps) {
                 {insight.findings && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1">Findings</p>
-                    <p className="text-sm text-foreground">{insight.findings}</p>
+                    <p className="text-sm text-foreground">{formatText(insight.findings)}</p>
                   </div>
                 )}
                 {insight.impression && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1">Impression</p>
-                    <p className="text-sm text-foreground font-medium">{insight.impression}</p>
+                    <p className="text-sm text-foreground font-medium">{formatText(insight.impression)}</p>
                   </div>
                 )}
                 {insight.clinical_significance && (
                   <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-2.5">
                     <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-0.5">Clinical Significance</p>
-                    <p className="text-sm text-amber-800 dark:text-amber-300">{insight.clinical_significance}</p>
+                    <p className="text-sm text-amber-800 dark:text-amber-300">{formatText(insight.clinical_significance)}</p>
                   </div>
                 )}
               </div>

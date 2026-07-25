@@ -2,6 +2,7 @@
 
 import { ClinicalDashboard } from "@/types/dashboard";
 import { User, AlertTriangle, Pill } from "lucide-react";
+import { formatText } from "@/lib/utils";
 
 interface PatientOverviewProps {
   dashboard: ClinicalDashboard;
@@ -9,6 +10,8 @@ interface PatientOverviewProps {
 
 export function PatientOverview({ dashboard }: PatientOverviewProps) {
   const { demographics, chief_complaint, allergies, current_medications } = dashboard;
+
+  const complaintText = formatText(chief_complaint);
 
   return (
     <div className="glass-card rounded-2xl border border-border p-5">
@@ -23,35 +26,35 @@ export function PatientOverview({ dashboard }: PatientOverviewProps) {
             {demographics.name && (
               <div className="col-span-3">
                 <p className="text-xs text-muted-foreground">Name</p>
-                <p className="text-sm font-semibold text-foreground">{demographics.name}</p>
+                <p className="text-sm font-semibold text-foreground">{formatText(demographics.name)}</p>
               </div>
             )}
             {demographics.age && (
               <div>
                 <p className="text-xs text-muted-foreground">Age</p>
-                <p className="text-sm font-medium text-foreground">{demographics.age} yrs</p>
+                <p className="text-sm font-medium text-foreground">{formatText(demographics.age)} yrs</p>
               </div>
             )}
             {demographics.gender && (
               <div>
                 <p className="text-xs text-muted-foreground">Gender</p>
-                <p className="text-sm font-medium text-foreground">{demographics.gender}</p>
+                <p className="text-sm font-medium text-foreground">{formatText(demographics.gender)}</p>
               </div>
             )}
             {demographics.mrn && (
               <div>
                 <p className="text-xs text-muted-foreground">MRN</p>
-                <p className="text-sm font-mono font-medium text-foreground">{demographics.mrn}</p>
+                <p className="text-sm font-mono font-medium text-foreground">{formatText(demographics.mrn)}</p>
               </div>
             )}
           </div>
         )}
 
-        {chief_complaint && (
+        {complaintText && (
           <div>
             <p className="text-xs text-muted-foreground mb-1">Chief Complaint</p>
             <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/30 px-3 py-2">
-              <p className="text-sm text-amber-800 dark:text-amber-200 italic">&ldquo;{chief_complaint}&rdquo;</p>
+              <p className="text-sm text-amber-800 dark:text-amber-200 italic">&ldquo;{complaintText}&rdquo;</p>
             </div>
           </div>
         )}
@@ -65,7 +68,7 @@ export function PatientOverview({ dashboard }: PatientOverviewProps) {
             <div className="flex flex-wrap gap-1.5">
               {allergies.map((a, i) => (
                 <span key={i} className="text-xs bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 rounded-full px-2.5 py-0.5">
-                  {a}
+                  {formatText(a)}
                 </span>
               ))}
             </div>
@@ -81,7 +84,7 @@ export function PatientOverview({ dashboard }: PatientOverviewProps) {
             <div className="flex flex-wrap gap-1.5">
               {current_medications.map((m, i) => (
                 <span key={i} className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 rounded-full px-2.5 py-0.5">
-                  {m}
+                  {formatText(m)}
                 </span>
               ))}
             </div>

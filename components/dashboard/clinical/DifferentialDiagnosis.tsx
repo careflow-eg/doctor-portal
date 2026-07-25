@@ -2,7 +2,7 @@
 
 import { DifferentialDiagnosis as DiffDxType } from "@/types/dashboard";
 import { Stethoscope, CheckCircle, XCircle, ChevronDown, ChevronUp } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatText } from "@/lib/utils";
 import { useState } from "react";
 
 interface DifferentialDiagnosisProps {
@@ -51,10 +51,10 @@ export function DifferentialDiagnosis({ diagnoses }: DifferentialDiagnosisProps)
                 {/* Name + ICD */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground truncate">{dx.diagnosis}</p>
+                    <p className="text-sm font-semibold text-foreground truncate">{formatText(dx.diagnosis)}</p>
                     {dx.icd_code && (
                       <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                        {dx.icd_code}
+                        {formatText(dx.icd_code)}
                       </span>
                     )}
                   </div>
@@ -91,7 +91,7 @@ export function DifferentialDiagnosis({ diagnoses }: DifferentialDiagnosisProps)
                       <ul className="space-y-1">
                         {dx.supporting_evidence.map((ev, j) => (
                           <li key={j} className="text-xs text-foreground flex items-start gap-1.5">
-                            <span className="text-emerald-400 mt-0.5">•</span> {ev}
+                            <span className="text-emerald-400 mt-0.5">•</span> {formatText(ev)}
                           </li>
                         ))}
                       </ul>
@@ -106,7 +106,7 @@ export function DifferentialDiagnosis({ diagnoses }: DifferentialDiagnosisProps)
                       <ul className="space-y-1">
                         {dx.against_evidence.map((ev, j) => (
                           <li key={j} className="text-xs text-foreground flex items-start gap-1.5">
-                            <span className="text-red-400 mt-0.5">•</span> {ev}
+                            <span className="text-red-400 mt-0.5">•</span> {formatText(ev)}
                           </li>
                         ))}
                       </ul>

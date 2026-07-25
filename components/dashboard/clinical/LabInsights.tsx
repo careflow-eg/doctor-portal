@@ -2,7 +2,7 @@
 
 import { LabInsight as LabInsightType } from "@/types/dashboard";
 import { FlaskConical } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatText } from "@/lib/utils";
 
 interface LabInsightsProps {
   insight?: LabInsightType;
@@ -34,7 +34,7 @@ export function LabInsights({ insight }: LabInsightsProps) {
         <div className="space-y-4">
           {insight.summary && (
             <div className="rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30 p-3">
-              <p className="text-sm text-blue-800 dark:text-blue-200">{insight.summary}</p>
+              <p className="text-sm text-blue-800 dark:text-blue-200">{formatText(insight.summary)}</p>
             </div>
           )}
 
@@ -50,25 +50,28 @@ export function LabInsights({ insight }: LabInsightsProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {insight.findings.map((f, i) => (
-                    <tr key={i} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-3 py-2 font-medium text-foreground">{f.test_name}</td>
-                      <td className="px-3 py-2 font-mono text-foreground">{f.value} {f.unit}</td>
-                      <td className="px-3 py-2 text-muted-foreground hidden sm:table-cell">{f.reference_range}</td>
-                      <td className="px-3 py-2">
-                        <span className={cn("text-xs px-2 py-0.5 rounded-full", statusColors[f.status ?? "normal"])}>
-                          {f.status ?? "Normal"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {insight.findings.map((f, i) => {
+                    const statusKey = (typeof f.status === "string" ? f.status.toLowerCase() : "normal") as keyof typeof statusColors;
+                    return (
+                      <tr key={i} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-2 font-medium text-foreground">{formatText(f.test_name)}</td>
+                        <td className="px-3 py-2 font-mono text-foreground">{formatText(f.value)} {formatText(f.unit)}</td>
+                        <td className="px-3 py-2 text-muted-foreground hidden sm:table-cell">{formatText(f.reference_range)}</td>
+                        <td className="px-3 py-2">
+                          <span className={cn("text-xs px-2 py-0.5 rounded-full capitalize", statusColors[statusKey] ?? statusColors.normal)}>
+                            {formatText(f.status) || "Normal"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
 
           {insight.interpretation && (
-            <p className="text-sm text-muted-foreground">{insight.interpretation}</p>
+            <p className="text-sm text-muted-foreground">{formatText(insight.interpretation)}</p>
           )}
         </div>
       )}

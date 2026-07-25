@@ -64,3 +64,23 @@ export function getInitials(name: string): string {
 export function generateMRN(): string {
   return `MRN-${Date.now().toString().slice(-6)}`;
 }
+
+export function formatText(val: unknown): string {
+  if (val === null || val === undefined) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "number" || typeof val === "boolean") return String(val);
+  if (typeof val === "object") {
+    const obj = val as Record<string, unknown>;
+    if (obj.main_complaint) return String(obj.main_complaint);
+    if (obj.complaint) return String(obj.complaint);
+    if (obj.summary) return String(obj.summary);
+    if (obj.name) return String(obj.name);
+    if (obj.text) return String(obj.text);
+    if (obj.value) return String(obj.value);
+    const textValues = Object.values(obj).filter(
+      (v) => typeof v === "string" || typeof v === "number"
+    );
+    if (textValues.length > 0) return textValues.join(" · ");
+  }
+  return String(val);
+}

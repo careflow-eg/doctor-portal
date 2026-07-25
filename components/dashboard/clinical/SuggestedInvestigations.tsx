@@ -2,7 +2,7 @@
 
 import { SuggestedInvestigation } from "@/types/dashboard";
 import { Search } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatText } from "@/lib/utils";
 
 interface SuggestedInvestigationsProps {
   investigations: SuggestedInvestigation[];
@@ -30,7 +30,8 @@ export function SuggestedInvestigations({ investigations }: SuggestedInvestigati
       ) : (
         <div className="space-y-2.5">
           {investigations.map((inv, i) => {
-            const urgency = urgencyConfig[inv.urgency ?? "routine"] ?? urgencyConfig.routine;
+            const urgencyKey = (typeof inv.urgency === "string" ? inv.urgency.toLowerCase() : "routine") as keyof typeof urgencyConfig;
+            const urgency = urgencyConfig[urgencyKey] ?? urgencyConfig.routine;
             return (
               <div key={i} className="flex items-start gap-3 rounded-xl bg-muted/30 px-4 py-3">
                 <div className="h-7 w-7 rounded-lg bg-careflow-teal/10 flex items-center justify-center shrink-0 text-xs font-bold text-careflow-teal">
@@ -38,13 +39,13 @@ export function SuggestedInvestigations({ investigations }: SuggestedInvestigati
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <p className="text-sm font-semibold text-foreground">{inv.investigation}</p>
+                    <p className="text-sm font-semibold text-foreground">{formatText(inv.investigation)}</p>
                     <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", urgency.className)}>
                       {urgency.label}
                     </span>
                   </div>
                   {inv.rationale && (
-                    <p className="text-xs text-muted-foreground">{inv.rationale}</p>
+                    <p className="text-xs text-muted-foreground">{formatText(inv.rationale)}</p>
                   )}
                 </div>
               </div>
