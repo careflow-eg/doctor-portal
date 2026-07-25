@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -79,8 +80,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-16 items-center border-b border-sidebar-border px-4 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="h-8 w-8 shrink-0 rounded-lg bg-careflow-teal flex items-center justify-center shadow-md">
-            <Stethoscope className="h-4 w-4 text-white" />
+          <div className="h-8 w-8 shrink-0 rounded-lg overflow-hidden flex items-center justify-center">
+            <Image
+              src="/assets/img/favicon.png"
+              alt="CareFlow Logo"
+              width={32}
+              height={32}
+              className="h-8 w-8 object-contain"
+            />
           </div>
           <AnimatePresence>
             {!collapsed && (

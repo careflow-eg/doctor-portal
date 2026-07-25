@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "Sign In",
@@ -21,18 +22,23 @@ export default function AuthLayout({
       <div className="relative z-10 w-full max-w-md px-4">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <div className="h-10 w-10 rounded-xl bg-careflow-teal flex items-center justify-center">
-              <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6 text-white">
-                <path
-                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"
-                  fill="currentColor"
-                />
-              </svg>
-            </div>
-            <span className="text-2xl font-bold text-foreground">
-              Care<span style={{ color: "var(--careflow-teal)" }}>Flow</span>
-            </span>
+          <div className="inline-flex items-center justify-center gap-2 mb-2">
+            <Image
+              src="/assets/img/logo.png"
+              alt="CareFlow Logo"
+              width={160}
+              height={40}
+              className="h-10 w-auto object-contain dark:hidden"
+              priority
+            />
+            <Image
+              src="/assets/img/logo_white.png"
+              alt="CareFlow Logo"
+              width={160}
+              height={40}
+              className="h-10 w-auto object-contain hidden dark:block"
+              priority
+            />
           </div>
           <p className="text-sm text-muted-foreground">Doctor & Clinic Portal</p>
         </div>
