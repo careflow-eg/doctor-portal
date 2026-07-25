@@ -1,18 +1,12 @@
 "use client";
 
-import { use } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { HistoryCollection } from "@/components/history/HistoryCollection";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-interface Props {
-  params: Promise<{ id: string }>;
-}
-
-export default function HistoryPage({ params }: Props) {
-  const { id } = use(params);
+export function HistoryClient({ id }: { id: string }) {
   const router = useRouter();
 
   return (
@@ -38,4 +32,9 @@ export default function HistoryPage({ params }: Props) {
       />
     </div>
   );
+}
+
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <HistoryClient id={id} />;
 }

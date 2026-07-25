@@ -1,6 +1,5 @@
 "use client";
 
-import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { encounterService } from "@/services/encounterService";
 import { useEncounterStore } from "@/stores/encounterStore";
@@ -12,7 +11,6 @@ import { RadiologyUpload } from "@/components/uploads/RadiologyUpload";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { formatDateTime } from "@/lib/utils";
 import {
-  Calendar,
   User,
   Phone,
   FileText,
@@ -25,12 +23,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect } from "react";
 
-interface Props {
-  params: Promise<{ id: string }>;
-}
-
-export default function EncounterDetailPage({ params }: Props) {
-  const { id } = use(params);
+export function EncounterDetailClient({ id }: { id: string }) {
   const { setActiveEncounter, workflowSteps } = useEncounterStore();
 
   const { data: encounter, isLoading, refetch } = useQuery({
@@ -245,4 +238,9 @@ export default function EncounterDetailPage({ params }: Props) {
       )}
     </div>
   );
+}
+
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <EncounterDetailClient id={id} />;
 }

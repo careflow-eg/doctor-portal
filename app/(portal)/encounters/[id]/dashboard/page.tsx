@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { dashboardService } from "@/services/dashboardService";
 import { encounterService } from "@/services/encounterService";
@@ -25,12 +25,7 @@ import {
 import Link from "next/link";
 import { motion } from "framer-motion";
 
-interface Props {
-  params: Promise<{ id: string }>;
-}
-
-export default function DashboardPage({ params }: Props) {
-  const { id } = use(params);
+export function ClinicalDashboardClient({ id }: { id: string }) {
   const { addNotification } = useNotificationStore();
   const [dashboard, setDashboard] = useState<ClinicalDashboard | null>(null);
 
@@ -159,4 +154,9 @@ export default function DashboardPage({ params }: Props) {
       )}
     </div>
   );
+}
+
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <ClinicalDashboardClient id={id} />;
 }

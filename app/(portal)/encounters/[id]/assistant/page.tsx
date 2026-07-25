@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { assistantService } from "@/services/assistantService";
 import { AssistantMessage } from "@/types/dashboard";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -11,10 +11,6 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-interface Props {
-  params: Promise<{ id: string }>;
-}
-
 const STARTER_QUESTIONS = [
   "What are the most likely diagnoses based on the clinical data?",
   "What additional tests should I order?",
@@ -23,8 +19,7 @@ const STARTER_QUESTIONS = [
   "Are there any red flags I should watch for?",
 ];
 
-export default function AssistantPage({ params }: Props) {
-  const { id } = use(params);
+export function AssistantClient({ id }: { id: string }) {
   const { addNotification } = useNotificationStore();
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [input, setInput] = useState("");
@@ -239,4 +234,9 @@ export default function AssistantPage({ params }: Props) {
       </div>
     </div>
   );
+}
+
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <AssistantClient id={id} />;
 }
