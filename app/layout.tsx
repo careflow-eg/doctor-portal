@@ -25,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground antialiased selection:bg-teal-500 selection:text-white">
         <ThemeProvider>
           <QueryProvider>
