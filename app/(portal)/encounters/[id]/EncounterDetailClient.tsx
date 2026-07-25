@@ -18,18 +18,23 @@ import {
   BarChart2,
   Bot,
   CheckCircle,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect } from "react";
+// P3-3 FIX: Named constant instead of magic number — prevents accidental changes
+// and makes the intent clear when reading the useQuery config below.
+const ENCOUNTER_REFETCH_INTERVAL_MS = 10_000; // 10 seconds
 
 export function EncounterDetailClient({ id }: { id: string }) {
   const { setActiveEncounter, workflowSteps } = useEncounterStore();
 
-  const { data: encounter, isLoading, refetch } = useQuery({
+  const { data: encounter, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["encounter", id],
     queryFn: () => encounterService.getEncounter(id),
-    refetchInterval: 10000,
+    // P3-3 FIX: Use named constant — not a magic number
+    refetchInterval: ENCOUNTER_REFETCH_INTERVAL_MS,
   });
 
   useEffect(() => {
@@ -71,11 +76,15 @@ export function EncounterDetailClient({ id }: { id: string }) {
         subtitle={`Created ${formatDateTime(encounter.created_at)}`}
         badge={<EncounterStatusBadge status={encounter.status} size="md" />}
         actions={
+          // P3-1 FIX: Refresh button shows spinner while fetching to prevent
+          // multiple parallel refetches from double-clicks.
           <button
-            onClick={() => refetch()}
-            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+            onClick={() => !isFetching && refetch()}
+            disabled={isFetching}
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Refresh
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            {isFetching ? "Refreshing…" : "Refresh"}
           </button>
         }
       />
