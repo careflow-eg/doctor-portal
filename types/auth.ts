@@ -1,6 +1,6 @@
 // Authentication types matching workflow_orchestrator schemas
 
-export type UserRole = "DOCTOR" | "ASSISTANT" | "ADMIN";
+export type UserRole = "DOCTOR" | "NURSE" | "ADMIN" | "PATIENT";
 
 export interface User {
   id: string;

@@ -43,9 +43,22 @@ export default function LoginPage() {
       });
       router.push("/dashboard");
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Invalid credentials. Please try again.";
+      let msg = "Invalid credentials. Please try again.";
+      if (err && typeof err === "object" && "response" in err) {
+        const responseData = (err as { response?: { data?: unknown } }).response?.data;
+        if (responseData && typeof responseData === "object") {
+          if ("message" in responseData && typeof responseData.message === "string") {
+            msg = responseData.message;
+          } else if ("detail" in responseData) {
+            const detail = (responseData as { detail?: unknown }).detail;
+            if (typeof detail === "string") {
+              msg = detail;
+            } else if (Array.isArray(detail) && detail.length > 0) {
+              msg = detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(", ");
+            }
+          }
+        }
+      }
       addNotification({ type: "error", title: "Login failed", message: msg });
     }
   };

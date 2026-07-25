@@ -16,7 +16,7 @@ const schema = z
     email: z.string().email("Enter a valid email"),
     password: z.string().min(8, "Password must be at least 8 characters"),
     confirm_password: z.string(),
-    role: z.enum(["DOCTOR", "ASSISTANT"]),
+    role: z.enum(["DOCTOR", "NURSE"]),
   })
   .refine((d) => d.password === d.confirm_password, {
     message: "Passwords don't match",
@@ -54,9 +54,22 @@ export default function RegisterPage() {
       });
       router.push("/login");
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Registration failed. Please try again.";
+      let msg = "Registration failed. Please try again.";
+      if (err && typeof err === "object" && "response" in err) {
+        const responseData = (err as { response?: { data?: unknown } }).response?.data;
+        if (responseData && typeof responseData === "object") {
+          if ("message" in responseData && typeof responseData.message === "string") {
+            msg = responseData.message;
+          } else if ("detail" in responseData) {
+            const detail = (responseData as { detail?: unknown }).detail;
+            if (typeof detail === "string") {
+              msg = detail;
+            } else if (Array.isArray(detail) && detail.length > 0) {
+              msg = detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(", ");
+            }
+          }
+        }
+      }
       addNotification({ type: "error", title: "Registration failed", message: msg });
     }
   };
@@ -113,7 +126,7 @@ export default function RegisterPage() {
             className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-careflow-teal/50 focus:border-careflow-teal transition-all"
           >
             <option value="DOCTOR">Doctor</option>
-            <option value="ASSISTANT">Clinic Assistant</option>
+            <option value="NURSE">Clinic Nurse / Assistant</option>
           </select>
         </div>
 
