@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Stethoscope,
   LogOut,
+  Scan,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
@@ -45,6 +46,12 @@ const navItems = [
     label: "AI Assistant",
     icon: Bot,
     description: "AI physician assistant",
+  },
+  {
+    href: "/radiology-picker",
+    label: "Radiology Picker",
+    icon: Scan,
+    description: "AI Image Segmentation",
   },
   {
     href: "/settings",

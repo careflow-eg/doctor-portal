@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { LucideIcon } from "lucide-react";
+import { LucideIcon, Users, ClipboardList, Activity, Clock } from "lucide-react";
 
 interface StatCard {
   title: string;
@@ -80,7 +80,7 @@ export function StatsCards({
   activeEncounters,
   pendingHistory,
 }: StatsCardsProps) {
-  const { Users, ClipboardList, Activity, Clock } = require("lucide-react");
+  // lucide-react icons are statically imported at the top
 
   const cards: StatCard[] = [
     {

@@ -19,6 +19,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const savedTheme = localStorage.getItem("careflow_theme") as Theme | null;
     if (savedTheme) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTheme(savedTheme);
     }
   }, []);
@@ -36,9 +37,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
       if (isDark) {
         root.classList.add("dark");
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setResolvedTheme("dark");
       } else {
         root.classList.remove("dark");
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setResolvedTheme("light");
       }
     };
