@@ -50,7 +50,11 @@ export function AssistantClient({ id }: { id: string }) {
     setIsLoading(true);
 
     try {
-      const response = await assistantService.queryAssistant(id, query);
+      const priorTurns = messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+      const response = await assistantService.queryAssistant(id, query, priorTurns);
       const assistantMsg: AssistantMessage = {
         id: `assistant-${Date.now()}`,
         role: "assistant",
