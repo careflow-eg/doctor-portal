@@ -12,17 +12,18 @@ interface DifferentialDiagnosisProps {
 export function DifferentialDiagnosis({ diagnoses }: DifferentialDiagnosisProps) {
   const [expanded, setExpanded] = useState<number | null>(0);
 
-  const sorted = [...diagnoses].sort((a, b) => b.confidence - a.confidence);
+  const list = Array.isArray(diagnoses) ? diagnoses : [];
+  const sorted = [...list].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
 
   return (
     <div className="glass-card rounded-2xl border border-border p-5">
       <div className="flex items-center gap-2 mb-4">
         <Stethoscope className="h-5 w-5 text-careflow-teal" />
         <h3 className="font-semibold text-foreground">Differential Diagnosis</h3>
-        <span className="ml-auto text-xs text-muted-foreground">{diagnoses.length} conditions considered</span>
+        <span className="ml-auto text-xs text-muted-foreground">{list.length} conditions considered</span>
       </div>
 
-      {diagnoses.length === 0 ? (
+      {list.length === 0 ? (
         <p className="text-sm text-muted-foreground">No differential diagnoses generated</p>
       ) : (
         <div className="space-y-2">
@@ -65,11 +66,11 @@ export function DifferentialDiagnosis({ diagnoses }: DifferentialDiagnosisProps)
                   <div className="w-20 h-2 rounded-full bg-border overflow-hidden">
                     <div
                       className={cn("h-full rounded-full", i === 0 ? "bg-careflow-teal" : "bg-muted-foreground/50")}
-                      style={{ width: `${dx.confidence * 100}%` }}
+                      style={{ width: `${Math.round((dx.confidence ?? 0.5) * 100)}%` }}
                     />
                   </div>
                   <span className="text-xs font-semibold text-foreground w-10 text-right">
-                    {Math.round(dx.confidence * 100)}%
+                    {Math.round((dx.confidence ?? 0.5) * 100)}%
                   </span>
                 </div>
 

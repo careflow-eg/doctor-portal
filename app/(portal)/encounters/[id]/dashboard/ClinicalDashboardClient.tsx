@@ -24,6 +24,8 @@ import {
 import Link from "next/link";
 import { motion } from "framer-motion";
 
+import { normalizeDashboardData } from "@/lib/dashboardNormalizer";
+
 export function ClinicalDashboardClient({ id }: { id: string }) {
   const { addNotification } = useNotificationStore();
   const [dashboard, setDashboard] = useState<ClinicalDashboard | null>(null);
@@ -44,12 +46,16 @@ export function ClinicalDashboardClient({ id }: { id: string }) {
     },
   });
 
-  const existingDashboard = encounter?.step_results.find(
-    (s) => s.service_name === "DECISION_SUPPORT" && s.status === "SUCCESS"
-  );
+  const stepResults = encounter?.step_results ?? [];
+  const existingDashboardStep = [...stepResults]
+    .reverse()
+    .find((s) => s.service_name === "DECISION_SUPPORT" && s.status === "SUCCESS");
 
-  const dashboardData: ClinicalDashboard | null =
-    dashboard ?? (existingDashboard?.structured_data as ClinicalDashboard | null);
+  const rawData = dashboard ?? (existingDashboardStep?.structured_data as Record<string, unknown> | null);
+
+  const dashboardData: ClinicalDashboard | null = rawData
+    ? normalizeDashboardData(rawData, encounter)
+    : null;
 
   return (
     <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">

@@ -15,21 +15,25 @@ const urgencyConfig = {
 };
 
 export function SuggestedInvestigations({ investigations }: SuggestedInvestigationsProps) {
+  const list: SuggestedInvestigation[] = Array.isArray(investigations)
+    ? investigations.map((inv) => (typeof inv === "string" ? { investigation: inv, rationale: "", urgency: "routine" as const } : inv))
+    : [];
+
   return (
     <div className="glass-card rounded-2xl border border-border p-5">
       <div className="flex items-center gap-2 mb-4">
         <Search className="h-5 w-5 text-careflow-teal" />
         <h3 className="font-semibold text-foreground">Suggested Investigations</h3>
         <span className="ml-auto text-xs bg-careflow-teal/10 text-careflow-teal px-2 py-0.5 rounded-full">
-          {investigations.length}
+          {list.length}
         </span>
       </div>
 
-      {investigations.length === 0 ? (
+      {list.length === 0 ? (
         <p className="text-sm text-muted-foreground">No investigations suggested</p>
       ) : (
         <div className="space-y-2.5">
-          {investigations.map((inv, i) => {
+          {list.map((inv, i) => {
             const urgencyKey = (typeof inv.urgency === "string" ? inv.urgency.toLowerCase() : "routine") as keyof typeof urgencyConfig;
             const urgency = urgencyConfig[urgencyKey] ?? urgencyConfig.routine;
             return (

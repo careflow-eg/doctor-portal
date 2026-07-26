@@ -15,10 +15,14 @@ const priorityConfig = {
 };
 
 export function SuggestedActions({ actions }: SuggestedActionsProps) {
-  const sorted = [...actions].sort((a, b) => {
+  const list: SuggestedAction[] = Array.isArray(actions)
+    ? actions.map((a) => (typeof a === "string" ? { action: a, rationale: "", priority: "medium" as const } : a))
+    : [];
+
+  const sorted = [...list].sort((a, b) => {
     const order = { high: 0, medium: 1, low: 2 };
-    const pA = (typeof a.priority === "string" ? a.priority.toLowerCase() : "low") as keyof typeof order;
-    const pB = (typeof b.priority === "string" ? b.priority.toLowerCase() : "low") as keyof typeof order;
+    const pA = (typeof a?.priority === "string" ? a.priority.toLowerCase() : "low") as keyof typeof order;
+    const pB = (typeof b?.priority === "string" ? b.priority.toLowerCase() : "low") as keyof typeof order;
     return (order[pA] ?? 2) - (order[pB] ?? 2);
   });
 
@@ -28,11 +32,11 @@ export function SuggestedActions({ actions }: SuggestedActionsProps) {
         <Zap className="h-5 w-5 text-amber-500" />
         <h3 className="font-semibold text-foreground">Recommended Actions</h3>
         <span className="ml-auto text-xs bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 px-2 py-0.5 rounded-full">
-          {actions.length}
+          {list.length}
         </span>
       </div>
 
-      {actions.length === 0 ? (
+      {list.length === 0 ? (
         <p className="text-sm text-muted-foreground">No actions recommended</p>
       ) : (
         <div className="space-y-2.5">
