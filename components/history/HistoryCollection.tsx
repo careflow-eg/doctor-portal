@@ -132,10 +132,19 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
         };
 
         recorder.onstop = async () => {
-          const blob = new Blob(audioChunks.current, { type: "audio/wav" });
+          const mimeType = recorder.mimeType || "audio/webm";
+          const blob = new Blob(audioChunks.current, { type: mimeType });
+          const filename = mimeType.includes("webm")
+            ? "audio.webm"
+            : mimeType.includes("mp4")
+            ? "audio.mp4"
+            : mimeType.includes("ogg")
+            ? "audio.ogg"
+            : "audio.wav";
+
           stream.getTracks().forEach((t) => t.stop());
           try {
-            const data = await historyService.processAudioTurn(encounterId, blob);
+            const data = await historyService.processAudioTurn(encounterId, blob, filename);
             addNotification({ type: "info", title: "Audio response sent" });
 
             const nextQuestion =
@@ -154,8 +163,13 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
         recorder.start();
         mediaRecorder.current = recorder;
         setIsRecording(true);
-      } catch {
-        addNotification({ type: "error", title: "Microphone access denied" });
+      } catch (err) {
+        console.error("Microphone access error:", err);
+        addNotification({
+          type: "error",
+          title: "Microphone access denied",
+          message: err instanceof Error ? err.message : "Unable to access microphone",
+        });
       }
     }
   };

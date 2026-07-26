@@ -40,7 +40,7 @@ const nextConfig: NextConfig = {
           // Restrict browser feature access
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value: "camera=(), microphone=(self), geolocation=()",
           },
         ],
       },
