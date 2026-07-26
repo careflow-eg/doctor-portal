@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { api, createFormDataApi } from "@/lib/api";
 
 export const historyService = {
   async startHistorySession(encounterId: string): Promise<Record<string, unknown>> {
