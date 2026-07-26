@@ -98,53 +98,166 @@ export function normalizeDashboardData(
       })
     : [];
 
+function parseLabStatus(item: any): "normal" | "high" | "low" | "critical" {
+  if (!item) return "normal";
+  if (typeof item === "string") {
+    const s = item.toLowerCase();
+    if (s.includes("crit") || s.includes("panic") || s.includes("severe") || s.includes("🔴")) return "critical";
+    if (s.includes("high") || s.includes("elevat") || s.includes("abnorm") || s.includes("h") || s.includes("🟡")) return "high";
+    if (s.includes("low") || s.includes("decreas") || s.includes("l")) return "low";
+    if (s.includes("norm") || s.includes("ok")) return "normal";
+  }
+  const statusStr = String(
+    item.status || item.status_icon || item.severity_level || item.flag || item.severity || ""
+  ).toLowerCase();
+  if (statusStr.includes("crit") || statusStr.includes("panic") || statusStr.includes("severe") || statusStr.includes("🔴")) return "critical";
+  if (statusStr.includes("high") || statusStr.includes("elevat") || statusStr.includes("abnorm") || statusStr.includes("h") || statusStr.includes("🟡")) return "high";
+  if (statusStr.includes("low") || statusStr.includes("decreas") || statusStr.includes("l")) return "low";
+  return "normal";
+}
+
   // 5. Lab Insights
   let lab_insights: LabInsight | undefined;
-  const rawLab = raw.lab_insights || raw.laboratory;
-  if (Array.isArray(rawLab)) {
-    const findings: LabFinding[] = rawLab.map((item: any) => ({
-      test_name: formatText(item.test_name || item.test || item.name),
-      value: formatText(item.value || item.result_value),
-      unit: formatText(item.unit),
-      reference_range: formatText(item.reference_range),
-      status: (typeof item.status === "string"
-        ? item.status.toLowerCase()
-        : item.flag
-        ? "high"
-        : "normal") as any,
-    }));
-    const abnormal_count = findings.filter((f) => f.status && f.status !== "normal").length;
+
+  let rawLab =
+    raw.lab_insights ||
+    raw.laboratory ||
+    raw.lab_results ||
+    raw.lab_findings ||
+    raw.labs ||
+    raw.lab;
+
+  // Fallback to encounter step_results if raw has no lab data or empty lab array
+  if (
+    (!rawLab || (Array.isArray(rawLab) && rawLab.length === 0)) &&
+    encounter?.step_results &&
+    Array.isArray(encounter.step_results)
+  ) {
+    const labStep = [...encounter.step_results]
+      .reverse()
+      .find((s: any) => (s.service_name === "LAB" || s.service_name === "OCR_MASKING") && s.status === "SUCCESS");
+    if (labStep?.structured_data) {
+      rawLab = labStep.structured_data;
+    }
+  }
+
+  if (Array.isArray(rawLab) && rawLab.length > 0) {
+    const findings: LabFinding[] = rawLab.map((item: any) => {
+      if (typeof item === "string") {
+        return {
+          test_name: formatText(item),
+          value: "",
+          status: parseLabStatus(item),
+        };
+      }
+
+      const testName = formatText(
+        item.test_name ||
+          item.test ||
+          item.name ||
+          item.label ||
+          item.finding ||
+          item.title ||
+          item.parameter
+      );
+
+      const val = formatText(item.value || item.result_value || item.result || item.val || item.details);
+      const unit = formatText(item.unit || item.units);
+      const referenceRange = formatText(
+        item.reference_range || item.reference || item.ref_range || item.range
+      );
+
+      return {
+        test_name: testName || "Laboratory Finding",
+        value: val,
+        unit,
+        reference_range: referenceRange,
+        status: parseLabStatus(item),
+      };
+    });
+
+    const abnormal_count =
+      raw.abnormal_count ??
+      raw.abnormal_lab_count ??
+      findings.filter((f) => f.status && f.status !== "normal").length;
+
+    const summaryText = formatText(
+      raw.lab_summary ||
+        raw.laboratory_summary ||
+        raw.lab_insights_summary ||
+        raw.summary ||
+        (findings.length > 0 ? "Laboratory Findings Summary" : undefined)
+    );
+
     lab_insights = {
-      summary: "Laboratory Findings Summary",
+      summary: summaryText,
       findings,
       abnormal_count,
+      interpretation: formatText(raw.lab_interpretation || raw.interpretation || raw.original_report),
     };
   } else if (rawLab && typeof rawLab === "object") {
     let findings: LabFinding[] = [];
-    if (Array.isArray(rawLab.findings)) {
-      findings = rawLab.findings.map((f: any) => ({
-        test_name: formatText(f.test_name || f.test || f.name),
-        value: formatText(f.value || f.result_value),
-        unit: formatText(f.unit),
-        reference_range: formatText(f.reference_range),
-        status: (typeof f.status === "string" ? f.status.toLowerCase() : "normal") as any,
-      }));
+
+    if (Array.isArray(rawLab.findings) && rawLab.findings.length > 0) {
+      findings = rawLab.findings.map((f: any) => {
+        if (typeof f === "string") {
+          return { test_name: formatText(f), value: "", status: parseLabStatus(f) };
+        }
+        return {
+          test_name: formatText(
+            f.test_name || f.test || f.name || f.label || f.finding || f.title
+          ) || "Laboratory Finding",
+          value: formatText(f.value || f.result_value || f.result),
+          unit: formatText(f.unit || f.units),
+          reference_range: formatText(f.reference_range || f.reference || f.ref_range),
+          status: parseLabStatus(f),
+        };
+      });
     } else if (rawLab.structured_results && typeof rawLab.structured_results === "object") {
-      findings = Object.entries(rawLab.structured_results).map(([test_name, details]: [string, any]) => ({
-        test_name,
-        value: formatText(details.value),
-        unit: formatText(details.unit),
-        reference_range: formatText(details.reference_range),
-        status: (details.flag ? "high" : "normal") as any,
+      findings = Object.entries(rawLab.structured_results).map(([test_name, details]: [string, any]) => {
+        if (typeof details === "object" && details !== null) {
+          return {
+            test_name: formatText(test_name),
+            value: formatText(details.value || details.result_value || details.result),
+            unit: formatText(details.unit || details.units),
+            reference_range: formatText(details.reference_range || details.reference),
+            status: parseLabStatus(details),
+          };
+        }
+        return {
+          test_name: formatText(test_name),
+          value: formatText(details),
+          status: "normal" as const,
+        };
+      });
+    } else if (Array.isArray(rawLab.critical_findings) && rawLab.critical_findings.length > 0) {
+      findings = rawLab.critical_findings.map((item: any) => ({
+        test_name: formatText(typeof item === "object" ? item.test_name || item.label || item.finding : item),
+        value: formatText(typeof item === "object" ? item.value : ""),
+        status: "critical" as const,
       }));
     }
-    lab_insights = {
-      summary: formatText(rawLab.summary),
-      findings,
-      abnormal_count:
-        rawLab.abnormal_count ?? findings.filter((f) => f.status && f.status !== "normal").length,
-      interpretation: formatText(rawLab.interpretation || rawLab.original_report),
-    };
+
+    const abnormal_count =
+      rawLab.abnormal_count ??
+      raw.abnormal_count ??
+      findings.filter((f) => f.status && f.status !== "normal").length;
+
+    const summaryText = formatText(
+      rawLab.summary ||
+        raw.lab_summary ||
+        raw.laboratory_summary ||
+        (findings.length > 0 ? "Laboratory Findings Summary" : undefined)
+    );
+
+    if (summaryText || findings.length > 0 || rawLab.interpretation || rawLab.original_report) {
+      lab_insights = {
+        summary: summaryText,
+        findings,
+        abnormal_count,
+        interpretation: formatText(rawLab.interpretation || rawLab.original_report),
+      };
+    }
   }
 
   // 6. Radiology Insights

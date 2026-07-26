@@ -8,14 +8,22 @@ interface LabInsightsProps {
   insight?: LabInsightType;
 }
 
-const statusColors = {
+const statusColors: Record<string, string> = {
   normal: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20",
   high: "text-red-600 bg-red-50 dark:bg-red-950/20",
+  elevated: "text-red-600 bg-red-50 dark:bg-red-950/20",
+  abnormal: "text-amber-600 bg-amber-50 dark:bg-amber-950/20",
   low: "text-blue-600 bg-blue-50 dark:bg-blue-950/20",
   critical: "text-red-700 bg-red-100 dark:bg-red-950/30 font-bold",
 };
 
 export function LabInsights({ insight }: LabInsightsProps) {
+  const hasContent =
+    insight &&
+    (insight.summary ||
+      (insight.findings && insight.findings.length > 0) ||
+      insight.interpretation);
+
   return (
     <div className="glass-card rounded-2xl border border-border p-5">
       <div className="flex items-center gap-2 mb-4">
@@ -28,7 +36,7 @@ export function LabInsights({ insight }: LabInsightsProps) {
         )}
       </div>
 
-      {!insight ? (
+      {!hasContent ? (
         <p className="text-sm text-muted-foreground">No lab data available</p>
       ) : (
         <div className="space-y-4">
