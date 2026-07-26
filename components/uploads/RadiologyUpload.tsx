@@ -26,8 +26,10 @@ export function RadiologyUpload({ encounterId, onSuccess }: RadiologyUploadProps
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      addNotification({ type: "error", title: "Invalid file", message: "Only image files (JPEG, PNG, DICOM) are supported." });
+    const isImage = file.type.startsWith("image/");
+    const isDicom = file.type === "application/dicom" || /\.(dcm|dicom|jpg|jpeg|png|webp|tiff|bmp)$/i.test(file.name);
+    if (!isImage && !isDicom) {
+      addNotification({ type: "error", title: "Invalid file", message: "Only image files (JPEG, PNG, WEBP, DICOM .dcm) are supported." });
       return;
     }
 
@@ -84,7 +86,7 @@ export function RadiologyUpload({ encounterId, onSuccess }: RadiologyUploadProps
           <input
             ref={inputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.dcm,.dicom"
             className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
           />
@@ -97,11 +99,11 @@ export function RadiologyUpload({ encounterId, onSuccess }: RadiologyUploadProps
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Drop radiology image here or{" "}
+                    Drop radiology image or DICOM here or{" "}
                     <span className="text-purple-500 underline">browse</span>
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    JPEG, PNG, DICOM — X-Ray, CT, MRI, Ultrasound
+                    JPEG, PNG, WEBP, DICOM (.dcm) up to 500MB
                   </p>
                 </div>
               </>

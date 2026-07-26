@@ -24,8 +24,10 @@ export function LabUpload({ encounterId, onSuccess }: LabUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
-    if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      addNotification({ type: "error", title: "Invalid file", message: "Only PDF and image files are supported." });
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isImg = file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp|tiff|bmp)$/i.test(file.name);
+    if (!isPdf && !isImg) {
+      addNotification({ type: "error", title: "Invalid file", message: "Only PDF and image files (JPG, PNG, WEBP, TIFF) are supported." });
       return;
     }
 
@@ -92,7 +94,7 @@ export function LabUpload({ encounterId, onSuccess }: LabUploadProps) {
                     Drop lab report here or{" "}
                     <span className="text-careflow-teal underline">browse</span>
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">PDF, JPG, PNG up to 50MB</p>
+                  <p className="text-xs text-muted-foreground mt-1">PDF, JPG, PNG, WEBP up to 200MB</p>
                 </div>
               </>
             )}
