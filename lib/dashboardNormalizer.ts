@@ -59,8 +59,13 @@ export function normalizeDashboardData(
   } else if (Array.isArray(rawDemographics.allergies)) {
     allergies = rawDemographics.allergies.map((a: string) => formatText(a));
   } else if (Array.isArray(raw.history?.allergies)) {
-    allergies = raw.history.allergies.map((a: string) =>
-      formatText(typeof a === "object" ? a.allergy || a.name : a)
+    // This branch handles the structured shape, where each entry is an object
+    // rather than a plain string. Annotating it `string` made the object branch
+    // unreachable to the type checker (`a` narrowed to `never`), so the union is
+    // what the code has always actually accepted.
+    type RawAllergy = string | { allergy?: string; name?: string };
+    allergies = raw.history.allergies.map((a: RawAllergy) =>
+      formatText(typeof a === "object" && a !== null ? a.allergy || a.name : a)
     );
   }
 
@@ -70,8 +75,9 @@ export function normalizeDashboardData(
   } else if (Array.isArray(rawDemographics.current_medications)) {
     current_medications = rawDemographics.current_medications.map((m: string) => formatText(m));
   } else if (Array.isArray(raw.history?.medications)) {
-    current_medications = raw.history.medications.map((m: string) =>
-      formatText(typeof m === "object" ? m.medication || m.name : m)
+    type RawMedication = string | { medication?: string; name?: string };
+    current_medications = raw.history.medications.map((m: RawMedication) =>
+      formatText(typeof m === "object" && m !== null ? m.medication || m.name : m)
     );
   }
 
@@ -100,7 +106,15 @@ export function normalizeDashboardData(
     })
     : [];
 
-  function parseLabStatus(item: RawData): "normal" | "high" | "low" | "critical" {
+  // Every call site passes either a raw string flag or a result object carrying
+  // one of the fields read below. RawData (Record<string, any>) made the string
+  // branch unreachable to the type checker even though it is live at runtime —
+  // this union is what the function has always actually accepted.
+  type LabStatusInput =
+    | string
+    | { status?: string; status_icon?: string; severity_level?: string; flag?: string; severity?: string };
+
+  function parseLabStatus(item: LabStatusInput): "normal" | "high" | "low" | "critical" {
     if (!item) return "normal";
     if (typeof item === "string") {
       const s = item.toLowerCase();
@@ -108,6 +122,7 @@ export function normalizeDashboardData(
       if (s.includes("high") || s.includes("elevat") || s.includes("abnorm") || s.includes("h") || s.includes("🟡")) return "high";
       if (s.includes("low") || s.includes("decreas") || s.includes("l")) return "low";
       if (s.includes("norm") || s.includes("ok")) return "normal";
+      return "normal";
     }
     const statusStr = String(
       item.status || item.status_icon || item.severity_level || item.flag || item.severity || ""
