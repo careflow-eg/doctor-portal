@@ -109,12 +109,18 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
 
   const newPatientMutation = useMutation({
     mutationFn: async (data: NewPatientFormData) => {
+      const ageNum = data.age ? Number(data.age) : undefined;
+      const genderVal =
+        data.gender === "" || !data.gender
+          ? undefined
+          : (data.gender as "Male" | "Female" | "Other");
+
       const patient = await patientService.createPatient({
         mrn: data.mrn || undefined,
         full_name: data.full_name,
-        age: data.age,
-        gender: data.gender,
-        contact_number: data.contact_number,
+        age: Number.isNaN(ageNum) ? undefined : ageNum,
+        gender: genderVal,
+        contact_number: data.contact_number || undefined,
       });
       return {
         encounter: await createEncounterForPatient(patient.id, data.chief_complaint),
