@@ -3,7 +3,6 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { NotificationContainer } from "@/components/ui/NotificationContainer";
-import { UserProvider } from '@auth0/nextjs-auth0/client';
 
 export const metadata: Metadata = {
   title: {
@@ -28,14 +27,12 @@ export default function RootLayout({
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="min-h-screen flex flex-col bg-white dark:bg-[#021418] text-slate-900 dark:text-slate-100 antialiased selection:bg-teal-500 selection:text-white">
-        <UserProvider>
-          <ThemeProvider>
-            <QueryProvider>
-              {children}
-              <NotificationContainer />
-            </QueryProvider>
-          </ThemeProvider>
-        </UserProvider>
+        <ThemeProvider>
+          <QueryProvider>
+            {children}
+            <NotificationContainer />
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
