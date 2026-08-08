@@ -11,7 +11,8 @@ export interface Patient {
 }
 
 export interface PatientCreate {
-  mrn: string;
+  /** Optional — the backend auto-generates an MRN when this is omitted or empty */
+  mrn?: string;
   full_name: string;
   age?: number;
   gender?: string;

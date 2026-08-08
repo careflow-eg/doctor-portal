@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,21 +13,29 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Patient } from "@/types/patient";
 
+// ─── Schema ──────────────────────────────────────────────────────────────────
+
 const newPatientSchema = z.object({
   mrn: z.string().optional(),
   full_name: z.string().min(2, "Name must be at least 2 characters"),
-  age: z.number().min(0).max(150).optional(),
-  gender: z.enum(["Male", "Female", "Other"]).optional(),
+  /** RHF returns strings from number inputs; coercion handled in mutationFn */
+  age: z.string().optional(),
+  /** RHF returns "" for unselected <select>; handled in mutationFn */
+  gender: z.string().optional(),
   contact_number: z.string().optional(),
   chief_complaint: z.string().optional(),
 });
 
 type NewPatientFormData = z.infer<typeof newPatientSchema>;
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 interface CreateEncounterModalProps {
   open: boolean;
   onClose: () => void;
 }
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProps) {
   const { addNotification } = useNotificationStore();
@@ -36,14 +44,35 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
 
   const [mode, setMode] = useState<"search" | "new">("search");
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [existingChiefComplaint, setExistingChiefComplaint] = useState("");
 
-  // Search patients query
+  // Debounce the search input so we don't hammer the API on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset state when the modal is closed externally
+  useEffect(() => {
+    if (!open) {
+      reset();
+      setSelectedPatient(null);
+      setSearchTerm("");
+      setDebouncedSearch("");
+      setExistingChiefComplaint("");
+      setMode("search");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Only search once the user has typed at least 2 characters
   const { data: searchResults = [], isLoading: isSearching } = useQuery({
-    queryKey: ["patients", "search", searchTerm],
-    queryFn: () => patientService.listPatients(searchTerm),
-    enabled: open && mode === "search",
+    queryKey: ["patients", "search", debouncedSearch],
+    queryFn: () => patientService.listPatients(debouncedSearch),
+    enabled: open && mode === "search" && debouncedSearch.length >= 2,
+    staleTime: 30_000,
   });
 
   const {
@@ -55,12 +84,28 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
     resolver: zodResolver(newPatientSchema),
   });
 
+  // ─── Shared helper ──────────────────────────────────────────────────────────
+
   const createEncounterForPatient = async (patientId: string, chiefComplaint?: string) => {
     return await encounterService.createEncounter({
       patient_id: patientId,
-      chief_complaint: chiefComplaint,
+      chief_complaint: chiefComplaint || undefined,
     });
   };
+
+  // ─── handleClose (declared before mutations so it's in scope) ───────────────
+
+  const handleClose = useCallback(() => {
+    reset();
+    setSelectedPatient(null);
+    setSearchTerm("");
+    setDebouncedSearch("");
+    setExistingChiefComplaint("");
+    setMode("search");
+    onClose();
+  }, [reset, onClose]);
+
+  // ─── New patient mutation ────────────────────────────────────────────────────
 
   const newPatientMutation = useMutation({
     mutationFn: async (data: NewPatientFormData) => {
@@ -71,14 +116,17 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
         gender: data.gender,
         contact_number: data.contact_number,
       });
-      return await createEncounterForPatient(patient.id, data.chief_complaint);
+      return {
+        encounter: await createEncounterForPatient(patient.id, data.chief_complaint),
+        patientName: patient.full_name,
+      };
     },
-    onSuccess: (encounter) => {
+    onSuccess: ({ encounter, patientName }) => {
       queryClient.invalidateQueries({ queryKey: ["encounters"] });
       addNotification({
         type: "success",
         title: "Encounter created!",
-        message: `Encounter for ${encounter.patient?.full_name} created successfully.`,
+        message: `Encounter for ${patientName} created successfully.`,
       });
       handleClose();
       router.push(`/encounters/${encounter.id}`);
@@ -91,9 +139,11 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
     },
   });
 
+  // ─── Existing patient mutation ───────────────────────────────────────────────
+
   const existingPatientMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedPatient || !selectedPatient.id) throw new Error("No patient selected");
+      if (!selectedPatient?.id) throw new Error("No patient selected");
       return await createEncounterForPatient(selectedPatient.id, existingChiefComplaint);
     },
     onSuccess: (encounter) => {
@@ -101,7 +151,7 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
       addNotification({
         type: "success",
         title: "Encounter created!",
-        message: `Encounter for ${selectedPatient?.full_name} created successfully.`,
+        message: `Encounter for ${selectedPatient?.full_name ?? "patient"} created successfully.`,
       });
       handleClose();
       router.push(`/encounters/${encounter.id}`);
@@ -114,20 +164,14 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
     },
   });
 
-  const handleClose = () => {
-    reset();
-    setSelectedPatient(null);
-    setSearchTerm("");
-    setExistingChiefComplaint("");
-    setMode("search");
-    onClose();
-  };
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
   if (!open) return null;
 
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -136,12 +180,14 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         />
 
+        {/* Modal panel */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="relative bg-card rounded-2xl border border-border shadow-2xl w-full max-w-lg overflow-hidden"
         >
+          {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
             <h2 className="text-lg font-bold text-foreground">New Encounter</h2>
             <button
@@ -178,6 +224,7 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
             </button>
           </div>
 
+          {/* ── Search existing patient ── */}
           {mode === "search" ? (
             <div className="p-6 space-y-4">
               <div>
@@ -189,21 +236,25 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
                   <input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by full name or MRN..."
+                    placeholder="Type at least 2 characters to search…"
                     className="w-full rounded-xl border border-input bg-background pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-careflow-teal/50 transition-all"
                   />
                 </div>
               </div>
 
-              {/* Patient List */}
+              {/* Patient list */}
               <div className="max-h-48 overflow-y-auto space-y-2 border border-border rounded-xl p-2 bg-muted/20">
-                {isSearching ? (
+                {debouncedSearch.length < 2 ? (
+                  <div className="text-center py-6 text-sm text-muted-foreground">
+                    Start typing to search for a patient.
+                  </div>
+                ) : isSearching ? (
                   <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Searching practice patients...
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Searching…
                   </div>
                 ) : searchResults.length === 0 ? (
                   <div className="text-center py-6 text-sm text-muted-foreground">
-                    No patients found. Click &quot;Register New&quot; above to add a new patient.
+                    No patients found. Click &quot;Register New&quot; to add a new patient.
                   </div>
                 ) : (
                   searchResults.map((patient) => (
@@ -219,7 +270,9 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
                     >
                       <div>
                         <p className="font-semibold text-sm">{patient.full_name}</p>
-                        <p className="text-xs text-muted-foreground">MRN: {patient.mrn} • {patient.gender || "N/A"}, {patient.age || "N/A"} yrs</p>
+                        <p className="text-xs text-muted-foreground">
+                          MRN: {patient.mrn} • {patient.gender ?? "N/A"}, {patient.age ?? "N/A"} yrs
+                        </p>
                       </div>
                       {selectedPatient?.id === patient.id && (
                         <Check className="h-4 w-4 text-careflow-teal" />
@@ -229,6 +282,7 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
                 )}
               </div>
 
+              {/* Chief complaint for existing patient */}
               {selectedPatient && (
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1.5">
@@ -239,7 +293,7 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
                     onChange={(e) => setExistingChiefComplaint(e.target.value)}
                     rows={2}
                     className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-careflow-teal/50 transition-all resize-none"
-                    placeholder="Reason for visit..."
+                    placeholder="Reason for visit…"
                   />
                 </div>
               )}
@@ -259,19 +313,22 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-careflow-teal hover:bg-careflow-teal-hover text-white text-sm font-semibold py-2.5 transition-all disabled:opacity-60"
                 >
                   {existingPatientMutation.isPending ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Creating...</>
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</>
                   ) : (
                     <><UserPlus className="h-4 w-4" /> Start Encounter</>
                   )}
                 </button>
               </div>
             </div>
+
           ) : (
+            /* ── Register new patient ── */
             <form
               onSubmit={handleSubmit((data) => newPatientMutation.mutate(data))}
               className="p-6 space-y-4"
             >
               <div className="grid grid-cols-2 gap-4">
+                {/* Full name */}
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-foreground mb-1.5">
                     Patient Full Name *
@@ -282,12 +339,11 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
                     placeholder="John Doe"
                   />
                   {errors.full_name && (
-                    <p className="mt-1 text-xs text-destructive">
-                      {errors.full_name.message}
-                    </p>
+                    <p className="mt-1 text-xs text-destructive">{errors.full_name.message}</p>
                   )}
                 </div>
 
+                {/* MRN */}
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1.5">
                     MRN (Optional)
@@ -299,22 +355,25 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
                   />
                 </div>
 
+                {/* Age */}
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">
-                    Age
-                  </label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Age</label>
                   <input
                     type="number"
-                    {...register("age", { valueAsNumber: true })}
+                    min={0}
+                    max={150}
+                    {...register("age")}
                     className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-careflow-teal/50 transition-all"
                     placeholder="45"
                   />
+                  {errors.age && (
+                    <p className="mt-1 text-xs text-destructive">{errors.age.message}</p>
+                  )}
                 </div>
 
+                {/* Gender */}
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">
-                    Gender
-                  </label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Gender</label>
                   <select
                     {...register("gender")}
                     className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-careflow-teal/50 transition-all"
@@ -326,17 +385,17 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
                   </select>
                 </div>
 
+                {/* Phone */}
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">
-                    Phone
-                  </label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Phone</label>
                   <input
                     {...register("contact_number")}
                     className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-careflow-teal/50 transition-all"
-                    placeholder="+1 234 567 8900"
+                    placeholder="+20 10 0000 0000"
                   />
                 </div>
 
+                {/* Chief complaint */}
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-foreground mb-1.5">
                     Chief Complaint
@@ -345,7 +404,7 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
                     {...register("chief_complaint")}
                     rows={2}
                     className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-careflow-teal/50 transition-all resize-none"
-                    placeholder="Patient's main presenting complaint..."
+                    placeholder="Patient's main presenting complaint…"
                   />
                 </div>
               </div>
@@ -364,9 +423,9 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-careflow-teal hover:bg-careflow-teal-hover text-white text-sm font-semibold py-2.5 transition-all disabled:opacity-60"
                 >
                   {newPatientMutation.isPending ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Creating...</>
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</>
                   ) : (
-                    <><UserPlus className="h-4 w-4" /> Register & Start</>
+                    <><UserPlus className="h-4 w-4" /> Register &amp; Start</>
                   )}
                 </button>
               </div>
