@@ -41,7 +41,7 @@ export function TodayEncounters({ encounters }: TodayEncountersProps) {
           <div className="py-10 text-center">
             <p className="text-sm text-muted-foreground">No encounters today</p>
             <Link
-              href="/encounters/new"
+              href="/encounters?create=true"
               className="mt-3 inline-flex items-center gap-1 text-sm text-careflow-teal hover:underline"
             >
               Create first encounter

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { encounterService } from "@/services/encounterService";
 import { EncounterCard } from "@/components/encounters/EncounterCard";
@@ -23,6 +23,17 @@ export default function EncountersPage() {
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<EncounterStatus | "ALL">("ALL");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("create") === "true") {
+        setShowModal(true);
+        url.searchParams.delete("create");
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  }, []);
 
   const { data: encounters = [], isLoading } = useQuery({
     queryKey: ["encounters"],

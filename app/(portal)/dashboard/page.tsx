@@ -43,7 +43,7 @@ export default function DashboardPage() {
         subtitle="Here's your clinical overview for today"
         actions={
           <Link
-            href="/encounters/new"
+            href="/encounters?create=true"
             className="flex items-center gap-2 rounded-xl bg-careflow-teal hover:bg-careflow-teal-hover text-white px-4 py-2.5 text-sm font-medium transition-all shadow-md shadow-careflow-teal/20 active:scale-[0.98]"
           >
             <PlusCircle className="h-4 w-4" />
@@ -81,7 +81,7 @@ export default function DashboardPage() {
         <h2 className="font-semibold text-foreground mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { href: "/encounters/new", label: "New Encounter", icon: PlusCircle, color: "text-careflow-teal" },
+            { href: "/encounters?create=true", label: "New Encounter", icon: PlusCircle, color: "text-careflow-teal" },
             { href: "/encounters", label: "All Encounters", icon: ClipboardList, color: "text-blue-500" },
             { href: "/patients", label: "Patients", icon: Users, color: "text-purple-500" },
             { href: "/assistant", label: "AI Assistant", icon: Activity, color: "text-amber-500" },
