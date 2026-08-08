@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# .env.example documents which variables the app requires and holds no secrets,
+# so it must be tracked — without it a new checkout cannot be configured.
+!.env.example
 !.env.production
 
 # vercel
