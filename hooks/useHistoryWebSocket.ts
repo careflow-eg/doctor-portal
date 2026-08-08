@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { HistoryEvent, TranscriptEntry } from "@/types/dashboard";
 
-const WS_BASE = (process.env.NEXT_PUBLIC_WS_URL ?? "wss://careflow-workflow-orchestrator.up.railway.app")
-  .replace("http://", "ws://")
-  .replace("https://", "wss://");
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL;
+if (!WS_URL) {
+  throw new Error("NEXT_PUBLIC_WS_URL is not set.");
+}
+const WS_BASE = WS_URL.replace("http://", "ws://").replace("https://", "wss://");
 
 type ConnectionState = "disconnected" | "connecting" | "connected" | "error" | "completed";
 

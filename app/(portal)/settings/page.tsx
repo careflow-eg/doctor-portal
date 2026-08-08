@@ -84,13 +84,13 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between rounded-xl bg-muted/30 px-4 py-2.5">
             <span className="text-muted-foreground">API Base URL</span>
             <span className="font-mono text-foreground">
-              {process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}
+              {process.env.NEXT_PUBLIC_API_URL ?? "not configured"}
             </span>
           </div>
           <div className="flex items-center justify-between rounded-xl bg-muted/30 px-4 py-2.5">
             <span className="text-muted-foreground">WebSocket URL</span>
             <span className="font-mono text-foreground">
-              {process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000"}
+              {process.env.NEXT_PUBLIC_WS_URL ?? "not configured"}
             </span>
           </div>
         </div>

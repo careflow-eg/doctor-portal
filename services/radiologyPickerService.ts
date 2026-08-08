@@ -1,6 +1,13 @@
 import axios from "axios";
 
-const BASE_URL = process.env.NEXT_PUBLIC_MEDSAM2_API_URL || "https://hossam-elsherbiny95--medsam2-segmentation-fastapi-app.modal.run";
+/**
+ * No fallback: the previous default embedded a personal Modal account name, which
+ * ties production to one individual's account and breaks silently if it changes.
+ */
+const BASE_URL = process.env.NEXT_PUBLIC_MEDSAM2_API_URL;
+if (!BASE_URL) {
+  throw new Error("NEXT_PUBLIC_MEDSAM2_API_URL is not set.");
+}
 const API_PREFIX = "/api/v1";
 
 export interface SegmentationResponse {
