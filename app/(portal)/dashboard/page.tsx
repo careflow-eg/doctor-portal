@@ -11,6 +11,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { PlusCircle, Users, ClipboardList, Activity, Clock } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { AnimatedSection, AnimatedCard } from "@/components/layout/AnimatedWrapper";
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -35,9 +36,10 @@ export default function DashboardPage() {
   const uniquePatients = new Set(encounters.map((e) => e.patient_id)).size;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <PageHeader
-        title={`Good morning, ${user?.full_name?.split(" ")[0] ?? "Doctor"} 👋`}
+    <div className="space-y-6">
+      <AnimatedSection>
+        <PageHeader
+          title={`Good morning, ${user?.full_name?.split(" ")[0] ?? "Doctor"} 👋`}
         subtitle="Here's your clinical overview for today"
         actions={
           <Link
@@ -49,30 +51,31 @@ export default function DashboardPage() {
           </Link>
         }
       />
+      </AnimatedSection>
 
       {/* Stats */}
-      <StatsCards
-        totalPatients={uniquePatients}
-        totalEncounters={encounters.length}
-        activeEncounters={active}
-        pendingHistory={pendingHistory}
-      />
+      <AnimatedSection className="delay-100">
+        <StatsCards
+          totalPatients={uniquePatients}
+          totalEncounters={encounters.length}
+          activeEncounters={active}
+          pendingHistory={pendingHistory}
+        />
+      </AnimatedSection>
 
       {/* Two-column grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <AnimatedSection className="grid grid-cols-1 lg:grid-cols-3 gap-6 delay-200">
         <div className="lg:col-span-2">
           <TodayEncounters encounters={encounters} />
         </div>
         <div>
           <PendingItems encounters={encounters} />
         </div>
-      </div>
+      </AnimatedSection>
 
       {/* Quick actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+      <AnimatedCard
+        delay={0.4}
         className="glass-card rounded-2xl border border-border p-5"
       >
         <h2 className="font-semibold text-foreground mb-4">Quick Actions</h2>
@@ -96,7 +99,7 @@ export default function DashboardPage() {
             );
           })}
         </div>
-      </motion.div>
+      </AnimatedCard>
     </div>
   );
 }

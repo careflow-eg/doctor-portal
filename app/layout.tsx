@@ -26,7 +26,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-teal-500 selection:text-white">
+      <body className="min-h-screen flex flex-col bg-white dark:bg-[#021418] text-slate-900 dark:text-slate-100 antialiased selection:bg-teal-500 selection:text-white">
         <ThemeProvider>
           <QueryProvider>
             {children}

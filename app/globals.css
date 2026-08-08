@@ -32,13 +32,6 @@
     --careflow-light: #f4f8ff;
     --careflow-accent: #14b8a6;
     --careflow-blue: #2563eb;
-
-    /* Sidebar */
-    --sidebar-bg: #f8fafc;
-    --sidebar-border: #e2e8f0;
-    --sidebar-width: 260px;
-    --sidebar-collapsed-width: 72px;
-    --topbar-height: 64px;
   }
 
   .dark {
@@ -61,10 +54,6 @@
     --border: #1e3a40;
     --input: #1e3a40;
     --ring: #14b8a6;
-
-    /* Sidebar dark */
-    --sidebar-bg: #0b1f24;
-    --sidebar-border: #1e3a40;
   }
 }
 
@@ -81,9 +70,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
   --color-border: var(--border);
-  --color-input: var(--input);
   --color-ring: var(--ring);
 
   --color-careflow-teal: #06635d;
@@ -93,11 +80,6 @@
   --color-careflow-light: #f4f8ff;
   --color-careflow-accent: #14b8a6;
   --color-careflow-blue: #2563eb;
-
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
 }
 
 html {
@@ -148,58 +130,50 @@ body {
   background: radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.2) 0%, rgba(6, 99, 93, 0.1) 50%, transparent 100%);
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+/* ── Accessibility ─────────────────────────────────────────────────── */
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(6, 99, 93, 0.3);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(6, 99, 93, 0.5);
-}
-
-/* Animations */
-@keyframes pulse-ring {
-  0% { transform: scale(0.8); opacity: 0.8; }
-  100% { transform: scale(1.5); opacity: 0; }
-}
-
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.35s ease forwards;
-}
-
-.animate-fade-in {
-  animation: fade-in 0.25s ease forwards;
-}
-
-/* Prose improvements for AI assistant output */
-.prose-careflow h1, .prose-careflow h2, .prose-careflow h3 {
-  color: var(--careflow-teal);
-  font-weight: 600;
-}
-
-.prose-careflow code {
-  background: var(--muted);
+/*
+ * A visible focus ring in the brand colour. --ring resolves to #06635d in
+ * light and #14b8a6 in dark, both measured above 7:1 against their own
+ * backgrounds. :focus-visible rather than :focus so pointer users never see it.
+ */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
   border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 0.85em;
+}
+
+/* Header carries a dozen controls, so give keyboard users a way past it. */
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -100px;
+  z-index: 100;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: top 0.15s ease-out;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
+/*
+ * Honour a reduced-motion preference. The site uses framer-motion widely;
+ * this collapses those transitions rather than removing the end state, so
+ * content still arrives — it just stops moving.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
