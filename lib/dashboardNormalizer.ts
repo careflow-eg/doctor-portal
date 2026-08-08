@@ -11,9 +11,11 @@ import {
 } from "@/types/dashboard";
 import { formatText } from "./utils";
 
+type RawData = Record<string, any>;
+
 export function normalizeDashboardData(
-  raw: any,
-  encounter?: any
+  raw: RawData,
+  encounter?: RawData
 ): ClinicalDashboard {
   if (!raw || typeof raw !== "object") {
     raw = {};
@@ -53,22 +55,22 @@ export function normalizeDashboardData(
   // 3. Allergies & Medications
   let allergies: string[] = [];
   if (Array.isArray(raw.allergies)) {
-    allergies = raw.allergies.map((a: any) => formatText(a));
+    allergies = raw.allergies.map((a: string) => formatText(a));
   } else if (Array.isArray(rawDemographics.allergies)) {
-    allergies = rawDemographics.allergies.map((a: any) => formatText(a));
+    allergies = rawDemographics.allergies.map((a: string) => formatText(a));
   } else if (Array.isArray(raw.history?.allergies)) {
-    allergies = raw.history.allergies.map((a: any) =>
+    allergies = raw.history.allergies.map((a: string) =>
       formatText(typeof a === "object" ? a.allergy || a.name : a)
     );
   }
 
   let current_medications: string[] = [];
   if (Array.isArray(raw.current_medications)) {
-    current_medications = raw.current_medications.map((m: any) => formatText(m));
+    current_medications = raw.current_medications.map((m: string) => formatText(m));
   } else if (Array.isArray(rawDemographics.current_medications)) {
-    current_medications = rawDemographics.current_medications.map((m: any) => formatText(m));
+    current_medications = rawDemographics.current_medications.map((m: string) => formatText(m));
   } else if (Array.isArray(raw.history?.medications)) {
-    current_medications = raw.history.medications.map((m: any) =>
+    current_medications = raw.history.medications.map((m: string) =>
       formatText(typeof m === "object" ? m.medication || m.name : m)
     );
   }
@@ -79,42 +81,42 @@ export function normalizeDashboardData(
     rawSymptoms = Object.entries(rawSymptoms).map(([k, v]) => ({ name: k, details: v }));
   }
   const symptoms: Symptom[] = Array.isArray(rawSymptoms)
-    ? rawSymptoms.map((s: any) => {
-        if (typeof s === "string") {
-          return { name: s, severity: "moderate" };
-        }
-        return {
-          name: formatText(s.name || s.symptom || s.finding || s.symptom_name),
-          severity: (typeof s.severity === "string" ? s.severity.toLowerCase() : "moderate") as any,
-          duration: formatText(s.duration),
-          confidence:
-            typeof s.confidence === "number"
-              ? s.confidence
-              : typeof s.confidence_score === "number"
+    ? rawSymptoms.map((s: RawData) => {
+      if (typeof s === "string") {
+        return { name: s, severity: "moderate" };
+      }
+      return {
+        name: formatText(s.name || s.symptom || s.finding || s.symptom_name),
+        severity: (typeof s.severity === "string" ? s.severity.toLowerCase() : "moderate") as any,
+        duration: formatText(s.duration),
+        confidence:
+          typeof s.confidence === "number"
+            ? s.confidence
+            : typeof s.confidence_score === "number"
               ? s.confidence_score
               : undefined,
-          onset: formatText(s.onset),
-        };
-      })
+        onset: formatText(s.onset),
+      };
+    })
     : [];
 
-function parseLabStatus(item: any): "normal" | "high" | "low" | "critical" {
-  if (!item) return "normal";
-  if (typeof item === "string") {
-    const s = item.toLowerCase();
-    if (s.includes("crit") || s.includes("panic") || s.includes("severe") || s.includes("🔴")) return "critical";
-    if (s.includes("high") || s.includes("elevat") || s.includes("abnorm") || s.includes("h") || s.includes("🟡")) return "high";
-    if (s.includes("low") || s.includes("decreas") || s.includes("l")) return "low";
-    if (s.includes("norm") || s.includes("ok")) return "normal";
+  function parseLabStatus(item: RawData): "normal" | "high" | "low" | "critical" {
+    if (!item) return "normal";
+    if (typeof item === "string") {
+      const s = item.toLowerCase();
+      if (s.includes("crit") || s.includes("panic") || s.includes("severe") || s.includes("🔴")) return "critical";
+      if (s.includes("high") || s.includes("elevat") || s.includes("abnorm") || s.includes("h") || s.includes("🟡")) return "high";
+      if (s.includes("low") || s.includes("decreas") || s.includes("l")) return "low";
+      if (s.includes("norm") || s.includes("ok")) return "normal";
+    }
+    const statusStr = String(
+      item.status || item.status_icon || item.severity_level || item.flag || item.severity || ""
+    ).toLowerCase();
+    if (statusStr.includes("crit") || statusStr.includes("panic") || statusStr.includes("severe") || statusStr.includes("🔴")) return "critical";
+    if (statusStr.includes("high") || statusStr.includes("elevat") || statusStr.includes("abnorm") || statusStr.includes("h") || statusStr.includes("🟡")) return "high";
+    if (statusStr.includes("low") || statusStr.includes("decreas") || statusStr.includes("l")) return "low";
+    return "normal";
   }
-  const statusStr = String(
-    item.status || item.status_icon || item.severity_level || item.flag || item.severity || ""
-  ).toLowerCase();
-  if (statusStr.includes("crit") || statusStr.includes("panic") || statusStr.includes("severe") || statusStr.includes("🔴")) return "critical";
-  if (statusStr.includes("high") || statusStr.includes("elevat") || statusStr.includes("abnorm") || statusStr.includes("h") || statusStr.includes("🟡")) return "high";
-  if (statusStr.includes("low") || statusStr.includes("decreas") || statusStr.includes("l")) return "low";
-  return "normal";
-}
 
   // 5. Lab Insights
   let lab_insights: LabInsight | undefined;
@@ -135,14 +137,14 @@ function parseLabStatus(item: any): "normal" | "high" | "low" | "critical" {
   ) {
     const labStep = [...encounter.step_results]
       .reverse()
-      .find((s: any) => (s.service_name === "LAB" || s.service_name === "OCR_MASKING") && s.status === "SUCCESS");
+      .find((s: RawData) => (s.service_name === "LAB" || s.service_name === "OCR_MASKING") && s.status === "SUCCESS");
     if (labStep?.structured_data) {
       rawLab = labStep.structured_data;
     }
   }
 
   if (Array.isArray(rawLab) && rawLab.length > 0) {
-    const findings: LabFinding[] = rawLab.map((item: any) => {
+    const findings: LabFinding[] = rawLab.map((item: RawData) => {
       if (typeof item === "string") {
         return {
           test_name: formatText(item),
@@ -153,12 +155,12 @@ function parseLabStatus(item: any): "normal" | "high" | "low" | "critical" {
 
       const testName = formatText(
         item.test_name ||
-          item.test ||
-          item.name ||
-          item.label ||
-          item.finding ||
-          item.title ||
-          item.parameter
+        item.test ||
+        item.name ||
+        item.label ||
+        item.finding ||
+        item.title ||
+        item.parameter
       );
 
       const val = formatText(item.value || item.result_value || item.result || item.val || item.details);
@@ -183,10 +185,10 @@ function parseLabStatus(item: any): "normal" | "high" | "low" | "critical" {
 
     const summaryText = formatText(
       raw.lab_summary ||
-        raw.laboratory_summary ||
-        raw.lab_insights_summary ||
-        raw.summary ||
-        (findings.length > 0 ? "Laboratory Findings Summary" : undefined)
+      raw.laboratory_summary ||
+      raw.lab_insights_summary ||
+      raw.summary ||
+      (findings.length > 0 ? "Laboratory Findings Summary" : undefined)
     );
 
     lab_insights = {
@@ -199,7 +201,7 @@ function parseLabStatus(item: any): "normal" | "high" | "low" | "critical" {
     let findings: LabFinding[] = [];
 
     if (Array.isArray(rawLab.findings) && rawLab.findings.length > 0) {
-      findings = rawLab.findings.map((f: any) => {
+      findings = rawLab.findings.map((f: RawData) => {
         if (typeof f === "string") {
           return { test_name: formatText(f), value: "", status: parseLabStatus(f) };
         }
@@ -231,7 +233,7 @@ function parseLabStatus(item: any): "normal" | "high" | "low" | "critical" {
         };
       });
     } else if (Array.isArray(rawLab.critical_findings) && rawLab.critical_findings.length > 0) {
-      findings = rawLab.critical_findings.map((item: any) => ({
+      findings = rawLab.critical_findings.map((item: RawData) => ({
         test_name: formatText(typeof item === "object" ? item.test_name || item.label || item.finding : item),
         value: formatText(typeof item === "object" ? item.value : ""),
         status: "critical" as const,
@@ -245,9 +247,9 @@ function parseLabStatus(item: any): "normal" | "high" | "low" | "critical" {
 
     const summaryText = formatText(
       rawLab.summary ||
-        raw.lab_summary ||
-        raw.laboratory_summary ||
-        (findings.length > 0 ? "Laboratory Findings Summary" : undefined)
+      raw.lab_summary ||
+      raw.laboratory_summary ||
+      (findings.length > 0 ? "Laboratory Findings Summary" : undefined)
     );
 
     if (summaryText || findings.length > 0 || rawLab.interpretation || rawLab.original_report) {
@@ -266,24 +268,24 @@ function parseLabStatus(item: any): "normal" | "high" | "low" | "critical" {
     rawRad = [rawRad];
   }
   const radiology_insights: RadiologyInsight[] = Array.isArray(rawRad)
-    ? rawRad.map((item: any) => {
-        if (typeof item === "string") {
-          return { findings: item };
-        }
-        return {
-          modality: formatText(item.modality),
-          body_part: formatText(item.body_part || item.anatomical_location),
-          findings: formatText(item.findings || item.abnormality),
-          impression: formatText(item.impression || item.summary || item.ai_impression),
-          clinical_significance: formatText(item.clinical_significance || item.severity),
-          confidence:
-            typeof item.confidence === "number"
-              ? item.confidence
-              : typeof item.confidence_score === "number"
+    ? rawRad.map((item: RawData) => {
+      if (typeof item === "string") {
+        return { findings: item };
+      }
+      return {
+        modality: formatText(item.modality),
+        body_part: formatText(item.body_part || item.anatomical_location),
+        findings: formatText(item.findings || item.abnormality),
+        impression: formatText(item.impression || item.summary || item.ai_impression),
+        clinical_significance: formatText(item.clinical_significance || item.severity),
+        confidence:
+          typeof item.confidence === "number"
+            ? item.confidence
+            : typeof item.confidence_score === "number"
               ? item.confidence_score
               : undefined,
-        };
-      })
+      };
+    })
     : [];
 
   // 7. Differential Diagnosis
@@ -292,52 +294,52 @@ function parseLabStatus(item: any): "normal" | "high" | "low" | "critical" {
     rawDiff = [rawDiff];
   }
   const differential_diagnosis: DifferentialDiagnosis[] = Array.isArray(rawDiff)
-    ? rawDiff.map((item: any) => {
-        if (typeof item === "string") {
-          return { diagnosis: item, confidence: 0.8 };
-        }
-        // Confidence
-        let confidence = 0.5;
-        if (typeof item.confidence === "number") {
-          confidence = item.confidence > 1 ? item.confidence / 100 : item.confidence;
-        } else if (typeof item.confidence_score === "number") {
-          confidence = item.confidence_score > 1 ? item.confidence_score / 100 : item.confidence_score;
-        } else if (typeof item.confidence_level === "string") {
-          const lvl = item.confidence_level.toLowerCase();
-          if (lvl.includes("high")) confidence = 0.85;
-          else if (lvl.includes("med")) confidence = 0.65;
-          else if (lvl.includes("low")) confidence = 0.45;
-        }
+    ? rawDiff.map((item: RawData) => {
+      if (typeof item === "string") {
+        return { diagnosis: item, confidence: 0.8 };
+      }
+      // Confidence
+      let confidence = 0.5;
+      if (typeof item.confidence === "number") {
+        confidence = item.confidence > 1 ? item.confidence / 100 : item.confidence;
+      } else if (typeof item.confidence_score === "number") {
+        confidence = item.confidence_score > 1 ? item.confidence_score / 100 : item.confidence_score;
+      } else if (typeof item.confidence_level === "string") {
+        const lvl = item.confidence_level.toLowerCase();
+        if (lvl.includes("high")) confidence = 0.85;
+        else if (lvl.includes("med")) confidence = 0.65;
+        else if (lvl.includes("low")) confidence = 0.45;
+      }
 
-        // Supporting / Against evidence
-        let supporting_evidence: string[] = [];
-        let against_evidence: string[] = [];
+      // Supporting / Against evidence
+      let supporting_evidence: string[] = [];
+      let against_evidence: string[] = [];
 
-        if (Array.isArray(item.supporting_evidence)) {
-          supporting_evidence = item.supporting_evidence.map((e: any) => formatText(e));
-        } else if (item.supporting_evidence && typeof item.supporting_evidence === "object") {
-          if (Array.isArray(item.supporting_evidence.positive)) {
-            supporting_evidence = item.supporting_evidence.positive.map((e: any) => formatText(e));
-          }
-          if (Array.isArray(item.supporting_evidence.negative)) {
-            against_evidence = item.supporting_evidence.negative.map((e: any) => formatText(e));
-          }
-        } else if (item.evidence_summary) {
-          supporting_evidence = [formatText(item.evidence_summary)];
+      if (Array.isArray(item.supporting_evidence)) {
+        supporting_evidence = item.supporting_evidence.map((e: string) => formatText(e));
+      } else if (item.supporting_evidence && typeof item.supporting_evidence === "object") {
+        if (Array.isArray(item.supporting_evidence.positive)) {
+          supporting_evidence = item.supporting_evidence.positive.map((e: string) => formatText(e));
         }
-
-        if (Array.isArray(item.against_evidence)) {
-          against_evidence = item.against_evidence.map((e: any) => formatText(e));
+        if (Array.isArray(item.supporting_evidence.negative)) {
+          against_evidence = item.supporting_evidence.negative.map((e: string) => formatText(e));
         }
+      } else if (item.evidence_summary) {
+        supporting_evidence = [formatText(item.evidence_summary)];
+      }
 
-        return {
-          diagnosis: formatText(item.diagnosis || item.condition || item.name),
-          confidence,
-          icd_code: formatText(item.icd_code || item.icd10_code),
-          supporting_evidence,
-          against_evidence,
-        };
-      })
+      if (Array.isArray(item.against_evidence)) {
+        against_evidence = item.against_evidence.map((e: string) => formatText(e));
+      }
+
+      return {
+        diagnosis: formatText(item.diagnosis || item.condition || item.name),
+        confidence,
+        icd_code: formatText(item.icd_code || item.icd10_code),
+        supporting_evidence,
+        against_evidence,
+      };
+    })
     : [];
 
   // 8. Suggested Investigations
@@ -346,16 +348,16 @@ function parseLabStatus(item: any): "normal" | "high" | "low" | "critical" {
     rawInv = Object.values(rawInv);
   }
   const suggested_investigations: SuggestedInvestigation[] = Array.isArray(rawInv)
-    ? rawInv.map((item: any) => {
-        if (typeof item === "string") {
-          return { investigation: item, rationale: "", urgency: "routine" };
-        }
-        return {
-          investigation: formatText(item.investigation || item.name || item.text || item.title),
-          rationale: formatText(item.rationale || item.reason || item.description),
-          urgency: (typeof item.urgency === "string" ? item.urgency.toLowerCase() : "routine") as any,
-        };
-      })
+    ? rawInv.map((item: RawData) => {
+      if (typeof item === "string") {
+        return { investigation: item, rationale: "", urgency: "routine" };
+      }
+      return {
+        investigation: formatText(item.investigation || item.name || item.text || item.title),
+        rationale: formatText(item.rationale || item.reason || item.description),
+        urgency: (typeof item.urgency === "string" ? item.urgency.toLowerCase() : "routine") as any,
+      };
+    })
     : [];
 
   // 9. Suggested Actions
@@ -365,16 +367,16 @@ function parseLabStatus(item: any): "normal" | "high" | "low" | "critical" {
     rawAct = Object.values(rawAct);
   }
   const suggested_actions: SuggestedAction[] = Array.isArray(rawAct)
-    ? rawAct.map((item: any) => {
-        if (typeof item === "string") {
-          return { action: item, rationale: "", priority: "medium" };
-        }
-        return {
-          action: formatText(item.action || item.name || item.text || item.title),
-          rationale: formatText(item.rationale || item.reason || item.description),
-          priority: (typeof item.priority === "string" ? item.priority.toLowerCase() : "medium") as any,
-        };
-      })
+    ? rawAct.map((item: RawData) => {
+      if (typeof item === "string") {
+        return { action: item, rationale: "", priority: "medium" };
+      }
+      return {
+        action: formatText(item.action || item.name || item.text || item.title),
+        rationale: formatText(item.rationale || item.reason || item.description),
+        priority: (typeof item.priority === "string" ? item.priority.toLowerCase() : "medium") as any,
+      };
+    })
     : [];
 
   return {

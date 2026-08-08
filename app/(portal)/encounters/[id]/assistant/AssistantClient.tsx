@@ -2,14 +2,19 @@
 
 import { useState, useRef, useEffect } from "react";
 import { assistantService } from "@/services/assistantService";
+import { encounterService } from "@/services/encounterService";
 import { AssistantMessage } from "@/types/dashboard";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { Bot, User, Send, Loader2, ArrowLeft, Sparkles } from "lucide-react";
 import { formatTime } from "@/lib/utils";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+
+let msgIdCounter = 0;
 
 const STARTER_QUESTIONS = [
   "What are the most likely diagnoses based on the clinical data?",
@@ -26,6 +31,29 @@ export function AssistantClient({ id }: { id: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const endEncounterMutation = useMutation({
+    mutationFn: () => encounterService.endEncounter(id),
+    onSuccess: () => {
+      addNotification({
+        type: "success",
+        title: "Encounter Completed",
+        message: "The encounter has been successfully ended.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["encounter", id] });
+      queryClient.invalidateQueries({ queryKey: ["encounters"] });
+      router.push("/dashboard");
+    },
+    onError: () => {
+      addNotification({
+        type: "error",
+        title: "Failed to end encounter",
+        message: "An error occurred while ending the encounter.",
+      });
+    },
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -39,7 +67,7 @@ export function AssistantClient({ id }: { id: string }) {
     if (!query.trim() || isLoading) return;
 
     const userMsg: AssistantMessage = {
-      id: `user-${Date.now()}`,
+      id: `user-${++msgIdCounter}`,
       role: "user",
       content: query.trim(),
       timestamp: new Date().toISOString(),
@@ -56,7 +84,7 @@ export function AssistantClient({ id }: { id: string }) {
       }));
       const response = await assistantService.queryAssistant(id, query, priorTurns);
       const assistantMsg: AssistantMessage = {
-        id: `assistant-${Date.now()}`,
+        id: `assistant-${++msgIdCounter}`,
         role: "assistant",
         content: response.answer ?? response.response ?? "I couldn't generate a response. Please try again.",
         citations: response.citations ?? response.sources,
@@ -101,6 +129,19 @@ export function AssistantClient({ id }: { id: string }) {
             <Sparkles className="h-3.5 w-3.5" />
             AI Powered
           </span>
+        }
+        actions={
+          <button
+            onClick={() => endEncounterMutation.mutate()}
+            disabled={endEncounterMutation.isPending}
+            className="flex items-center gap-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 px-4 py-2 text-sm font-medium transition-all disabled:opacity-50"
+          >
+            {endEncounterMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <span>End Conversation</span>
+            )}
+          </button>
         }
       />
 

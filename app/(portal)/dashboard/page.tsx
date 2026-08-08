@@ -1,11 +1,13 @@
 "use client";
 
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { encounterService } from "@/services/encounterService";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatsCards } from "@/components/dashboard/StatsCards";
 import { TodayEncounters } from "@/components/dashboard/TodayEncounters";
 import { PendingItems } from "@/components/dashboard/PendingItems";
+import { CreateEncounterModal } from "@/components/encounters/CreateEncounterModal";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { useAuthStore } from "@/stores/authStore";
 import { PlusCircle, Users, ClipboardList, Activity, Clock } from "lucide-react";
@@ -15,6 +17,7 @@ import { AnimatedSection, AnimatedCard } from "@/components/layout/AnimatedWrapp
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const { data: encounters = [], isLoading } = useQuery({
     queryKey: ["encounters"],
@@ -42,13 +45,13 @@ export default function DashboardPage() {
           title={`Good morning, ${user?.full_name?.split(" ")[0] ?? "Doctor"} 👋`}
         subtitle="Here's your clinical overview for today"
         actions={
-          <Link
-            href="/encounters?create=true"
+          <button
+            onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 rounded-xl bg-careflow-teal hover:bg-careflow-teal-hover text-white px-4 py-2.5 text-sm font-medium transition-all shadow-md shadow-careflow-teal/20 active:scale-[0.98]"
           >
             <PlusCircle className="h-4 w-4" />
             New Encounter
-          </Link>
+          </button>
         }
       />
       </AnimatedSection>
@@ -81,16 +84,28 @@ export default function DashboardPage() {
         <h2 className="font-semibold text-foreground mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { href: "/encounters?create=true", label: "New Encounter", icon: PlusCircle, color: "text-careflow-teal" },
+            { action: () => setShowCreateModal(true), label: "New Encounter", icon: PlusCircle, color: "text-careflow-teal" },
             { href: "/encounters", label: "All Encounters", icon: ClipboardList, color: "text-blue-500" },
             { href: "/patients", label: "Patients", icon: Users, color: "text-purple-500" },
             { href: "/assistant", label: "AI Assistant", icon: Activity, color: "text-amber-500" },
           ].map((a) => {
             const Icon = a.icon;
+            if (a.action) {
+              return (
+                <button
+                  key={a.label}
+                  onClick={a.action}
+                  className="flex flex-col items-center gap-2 rounded-xl border border-border bg-muted/30 hover:bg-muted p-4 text-center transition-all hover:shadow-sm group"
+                >
+                  <Icon className={`h-6 w-6 ${a.color} group-hover:scale-110 transition-transform`} />
+                  <span className="text-xs font-medium text-foreground">{a.label}</span>
+                </button>
+              );
+            }
             return (
               <Link
                 key={a.href}
-                href={a.href}
+                href={a.href!}
                 className="flex flex-col items-center gap-2 rounded-xl border border-border bg-muted/30 hover:bg-muted p-4 text-center transition-all hover:shadow-sm group"
               >
                 <Icon className={`h-6 w-6 ${a.color} group-hover:scale-110 transition-transform`} />
@@ -100,6 +115,8 @@ export default function DashboardPage() {
           })}
         </div>
       </AnimatedCard>
+
+      <CreateEncounterModal open={showCreateModal} onClose={() => setShowCreateModal(false)} />
     </div>
   );
 }

@@ -31,7 +31,7 @@ export function BoundingBoxDrawer({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentBox, setCurrentBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-  
+
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -55,9 +55,9 @@ export function BoundingBoxDrawer({
 
   const getCoordinates = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!containerRef.current || !imgRef.current) return null;
-    
+
     const rect = containerRef.current.getBoundingClientRect();
-    
+
     // Coordinates relative to the container, clamped to its boundaries
     const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
     const y = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
@@ -67,10 +67,10 @@ export function BoundingBoxDrawer({
 
   const getScaledCoordinates = (x: number, y: number) => {
     if (!imgRef.current) return { x: 0, y: 0 };
-    
+
     const scaleX = imgRef.current.naturalWidth / imgRef.current.width;
     const scaleY = imgRef.current.naturalHeight / imgRef.current.height;
-    
+
     return {
       x: Math.round(x * scaleX),
       y: Math.round(y * scaleY),
@@ -79,7 +79,7 @@ export function BoundingBoxDrawer({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (overlayImageBase64) return; // Prevent drawing if we're showing results
-    
+
     const coords = getCoordinates(e);
     if (!coords) return;
 
@@ -135,11 +135,14 @@ export function BoundingBoxDrawer({
   };
 
   const getUnscaledBox = (box: BoundingBox) => {
+    // eslint-disable-next-line react-hooks/refs
     if (!imgRef.current) return { x: 0, y: 0, w: 0, h: 0 };
-    
+
+    // eslint-disable-next-line react-hooks/refs
     const scaleX = imgRef.current.width / imgRef.current.naturalWidth;
+    // eslint-disable-next-line react-hooks/refs
     const scaleY = imgRef.current.height / imgRef.current.naturalHeight;
-    
+
     return {
       x: box.x1 * scaleX,
       y: box.y1 * scaleY,
@@ -189,11 +192,10 @@ export function BoundingBoxDrawer({
       </div>
 
       {/* Image Container */}
-      <div 
+      <div
         ref={containerRef}
-        className={`relative inline-block overflow-hidden rounded-lg shadow-inner select-none touch-none ${
-          !overlayImageBase64 ? "cursor-crosshair" : "cursor-default"
-        }`}
+        className={`relative inline-block overflow-hidden rounded-lg shadow-inner select-none touch-none ${!overlayImageBase64 ? "cursor-crosshair" : "cursor-default"
+          }`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -244,11 +246,11 @@ export function BoundingBoxDrawer({
           />
         )}
       </div>
-      
+
       {!overlayImageBase64 && boxes.length > 0 && (
         <div className="mt-4 flex w-full justify-between items-center bg-blue-500/10 text-blue-600 dark:text-blue-400 p-3 rounded-lg text-sm">
           <span>{boxes.length} box(es) drawn</span>
-          <button 
+          <button
             onClick={() => onBoxesChange([])}
             className="text-xs font-semibold hover:underline"
           >

@@ -93,15 +93,26 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
 
     // Otherwise, fallback to REST turn API
     try {
-      const data = await historyService.processTextTurn(encounterId, userText);
+      const data = await historyService.processTextTurn(encounterId, userText) as Record<string, any>;
+
+      // Check termination signal from backend (D-3 fix)
+      if (data.should_continue === false) {
+        addNotification({
+          type: "info",
+          title: "Interview Completed",
+          message: "The AI has collected sufficient history and ended the interview.",
+        });
+        await handleFinish();
+        return;
+      }
 
       // Prioritize Arabic next question from backend
       const nextQuestion =
-        (data as Record<string, string>).next_question_arabic ||
-        (data as Record<string, string>).next_question_english ||
-        (data as Record<string, string>).next_question ||
-        (data as Record<string, string>).question ||
-        (data as Record<string, string>).message;
+        data.next_question_arabic ||
+        data.next_question_english ||
+        data.next_question ||
+        data.question ||
+        data.message;
 
       if (nextQuestion) {
         addAssistantMessage(nextQuestion);
@@ -144,13 +155,23 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
 
           stream.getTracks().forEach((t) => t.stop());
           try {
-            const data = await historyService.processAudioTurn(encounterId, blob, filename);
+            const data = await historyService.processAudioTurn(encounterId, blob, filename) as Record<string, any>;
             addNotification({ type: "info", title: "Audio response sent" });
 
+            if (data.should_continue === false) {
+              addNotification({
+                type: "info",
+                title: "Interview Completed",
+                message: "The AI has collected sufficient history and ended the interview.",
+              });
+              await handleFinish();
+              return;
+            }
+
             const nextQuestion =
-              (data as Record<string, string>).next_question_arabic ||
-              (data as Record<string, string>).next_question_english ||
-              (data as Record<string, string>).next_question;
+              data.next_question_arabic ||
+              data.next_question_english ||
+              data.next_question;
 
             if (nextQuestion) {
               addAssistantMessage(nextQuestion);

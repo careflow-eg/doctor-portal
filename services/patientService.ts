@@ -2,6 +2,14 @@ import { api } from "@/lib/api";
 import { Patient, PatientCreate } from "@/types/patient";
 
 export const patientService = {
+  async listPatients(search?: string): Promise<Patient[]> {
+    const { data } = await api.get<{ success: boolean; data: Patient[] }>(
+      "/patients",
+      { params: search ? { search } : {} }
+    );
+    return data.data || [];
+  },
+
   async createPatient(payload: PatientCreate): Promise<Patient> {
     const { data } = await api.post<{ success: boolean; data: Patient }>(
       "/patients",

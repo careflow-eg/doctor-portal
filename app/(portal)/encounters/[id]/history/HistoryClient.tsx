@@ -23,7 +23,7 @@ export function HistoryClient({ id }: { id: string }) {
 
       <PageHeader
         title="History Collection"
-        subtitle="AI-powered medical history interview via WebSocket"
+        subtitle="AI-powered medical history interview"
       />
 
       <HistoryCollection

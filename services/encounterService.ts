@@ -25,4 +25,11 @@ export const encounterService = {
     );
     return data.data!;
   },
+
+  async endEncounter(encounterId: string): Promise<Encounter> {
+    const { data } = await api.post<{ success: boolean; data: Encounter }>(
+      `/encounters/${encounterId}/complete`
+    );
+    return data.data!;
+  },
 };

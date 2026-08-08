@@ -9,37 +9,15 @@ import { Users, ArrowRight, Phone, Calendar } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 
+import { patientService } from "@/services/patientService";
+
 export default function PatientsPage() {
-  const { data: encounters = [], isLoading } = useQuery({
-    queryKey: ["encounters"],
-    queryFn: () => encounterService.listEncounters(),
+  const { data: patients = [], isLoading } = useQuery({
+    queryKey: ["patients"],
+    queryFn: () => patientService.listPatients(),
   });
 
   if (isLoading) return <PageLoader label="Loading patients..." />;
-
-  // Deduplicate patients
-  const patientMap = new Map<string, { patient: NonNullable<typeof encounters[0]["patient"]>; lastVisit: string; encounterCount: number }>();
-  for (const enc of encounters) {
-    if (enc.patient) {
-      const existing = patientMap.get(enc.patient_id);
-      if (!existing) {
-        patientMap.set(enc.patient_id, {
-          patient: enc.patient,
-          lastVisit: enc.created_at,
-          encounterCount: 1,
-        });
-      } else {
-        existing.encounterCount++;
-        if (enc.created_at > existing.lastVisit) {
-          existing.lastVisit = enc.created_at;
-        }
-      }
-    }
-  }
-
-  const patients = Array.from(patientMap.values()).sort(
-    (a, b) => new Date(b.lastVisit).getTime() - new Date(a.lastVisit).getTime()
-  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -65,7 +43,7 @@ export default function PatientsPage() {
       ) : (
         <div className="glass-card rounded-2xl border border-border overflow-hidden">
           <div className="divide-y divide-border">
-            {patients.map(({ patient, lastVisit, encounterCount }) => (
+            {patients.map((patient) => (
               <div
                 key={patient.id}
                 className="flex items-center justify-between px-5 py-4 hover:bg-muted/50 transition-colors"
@@ -95,10 +73,7 @@ export default function PatientsPage() {
                   )}
                   <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Calendar className="h-3.5 w-3.5" />
-                    Last: {formatDate(lastVisit)}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {encounterCount} visit{encounterCount !== 1 ? "s" : ""}
+                    Registered: {patient.created_at ? formatDate(patient.created_at) : "N/A"}
                   </div>
                 </div>
               </div>

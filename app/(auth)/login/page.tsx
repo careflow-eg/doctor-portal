@@ -6,8 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Eye, EyeOff, Stethoscope, Loader2 } from "lucide-react";
-import { authService } from "@/services/authService";
-import { useAuthStore } from "@/stores/authStore";
+import { signIn } from "@/app/actions/auth";
 import { useNotificationStore } from "@/stores/notificationStore";
 import Link from "next/link";
 
@@ -19,8 +18,6 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { setAuth } = useAuthStore();
   const { addNotification } = useNotificationStore();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -32,34 +29,18 @@ export default function LoginPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const token = await authService.login({
-        email: data.email,
-        password: data.password,
-      });
-      setAuth(token.user, token.access_token);
-      addNotification({
-        type: "success",
-        title: `Welcome back, ${token.user.full_name}!`,
-      });
-      router.push("/dashboard");
-    } catch (err: unknown) {
-      let msg = "Invalid credentials. Please try again.";
-      if (err && typeof err === "object" && "response" in err) {
-        const responseData = (err as { response?: { data?: unknown } }).response?.data;
-        if (responseData && typeof responseData === "object") {
-          if ("message" in responseData && typeof responseData.message === "string") {
-            msg = responseData.message;
-          } else if ("detail" in responseData) {
-            const detail = (responseData as { detail?: unknown }).detail;
-            if (typeof detail === "string") {
-              msg = detail;
-            } else if (Array.isArray(detail) && detail.length > 0) {
-              msg = detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(", ");
-            }
-          }
-        }
+      const formData = new globalThis.FormData();
+      formData.append("email", data.email);
+      formData.append("password", data.password);
+
+      const result = await signIn(formData);
+      
+      if (result?.error) {
+        addNotification({ type: "error", title: "Login failed", message: result.error });
       }
-      addNotification({ type: "error", title: "Login failed", message: msg });
+      // If successful, the action will redirect
+    } catch (err: unknown) {
+      addNotification({ type: "error", title: "Login failed", message: "An unexpected error occurred." });
     }
   };
 
