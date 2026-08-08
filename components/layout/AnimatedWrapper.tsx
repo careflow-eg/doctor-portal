@@ -3,9 +3,10 @@
 import React from "react";
 import { motion } from "framer-motion";
 
-export const AnimatedSection = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => {
+export const AnimatedSection = ({ children, className = "", id }: { children: React.ReactNode, className?: string, id?: string }) => {
   return (
     <motion.section
+      id={id}
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-100px" }}
