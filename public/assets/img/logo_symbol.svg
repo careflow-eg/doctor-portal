@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 480" width="520" height="480">
+    <defs>
+        <linearGradient id="brandGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#156673" />
+            <stop offset="55%" stop-color="#449780" />
+            <stop offset="100%" stop-color="#60b47f" />
+        </linearGradient>
+    </defs>
+    
+        <!-- Symbol -->
+        <path d="M 160 240 C 160 140, 260 140, 260 240 C 260 340, 360 340, 360 240 C 360 140, 260 140, 260 240 C 260 340, 160 340, 160 240 Z" fill="none" stroke="url(#brandGradient)" stroke-width="40"/>
+        </svg>

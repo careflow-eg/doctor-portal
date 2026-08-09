@@ -32,6 +32,8 @@
     --careflow-light: #f4f8ff;
     --careflow-accent: #14b8a6;
     --careflow-blue: #2563eb;
+    --careflow-green: #60b47f;
+    --careflow-ink: #0d404c;
   }
 
   .dark {
@@ -80,6 +82,8 @@
   --color-careflow-light: #f4f8ff;
   --color-careflow-accent: #14b8a6;
   --color-careflow-blue: #2563eb;
+  --color-careflow-green: #60b47f;
+  --color-careflow-ink: #0d404c;
 }
 
 html {
