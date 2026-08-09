@@ -31,6 +31,11 @@ export function LabUpload({ encounterId, onSuccess }: LabUploadProps) {
       return;
     }
 
+    if (file.size > 200 * 1024 * 1024) {
+      addNotification({ type: "error", title: "File too large", message: "Lab reports must be under 200MB." });
+      return;
+    }
+
     setFileName(file.name);
     setState("uploading");
     setProgress(0);

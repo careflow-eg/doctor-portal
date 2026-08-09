@@ -33,6 +33,11 @@ export function RadiologyUpload({ encounterId, onSuccess }: RadiologyUploadProps
       return;
     }
 
+    if (file.size > 500 * 1024 * 1024) {
+      addNotification({ type: "error", title: "File too large", message: "Radiology images must be under 500MB." });
+      return;
+    }
+
     setFileName(file.name);
     setState("uploading");
     setProgress(0);

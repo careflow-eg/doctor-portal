@@ -23,7 +23,6 @@ export const authService = {
   logout() {
     if (typeof window !== "undefined") {
       localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
       localStorage.removeItem("careflow_user");
     }
   },

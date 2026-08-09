@@ -105,6 +105,18 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
     onClose();
   }, [reset, onClose]);
 
+  // ─── Escape Key Handler ─────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && open) {
+        handleClose();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, handleClose]);
+
   // ─── New patient mutation ────────────────────────────────────────────────────
 
   const newPatientMutation = useMutation({
@@ -188,6 +200,8 @@ export function CreateEncounterModal({ open, onClose }: CreateEncounterModalProp
 
         {/* Modal panel */}
         <motion.div
+          role="dialog"
+          aria-modal="true"
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
