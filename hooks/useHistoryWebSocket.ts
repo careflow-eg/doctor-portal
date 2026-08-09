@@ -54,8 +54,8 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
     setConnectionState("connecting");
     setError(null);
 
-    const url = `${WS_BASE}/api/v1/encounters/${encounterId}/ws${token ? `?token=${token}` : ""}`;
-    const socket = new WebSocket(url);
+    const url = `${WS_BASE}/api/v1/encounters/${encounterId}/ws`;
+    const socket = new WebSocket(url, token ? [token] : []);
     ws.current = socket;
 
     socket.onopen = () => {
@@ -103,11 +103,9 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
     };
 
     socket.onclose = () => {
-      if (connectionState !== "completed") {
-        setConnectionState("disconnected");
-      }
+      setConnectionState((prev) => (prev !== "completed" ? "disconnected" : prev));
     };
-  }, [encounterId, token, connectionState, addAssistantMessage]);
+  }, [encounterId, token, addAssistantMessage]);
 
   const disconnect = useCallback(() => {
     ws.current?.close();

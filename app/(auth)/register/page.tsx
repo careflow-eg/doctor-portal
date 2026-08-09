@@ -6,7 +6,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Eye, EyeOff, UserPlus, Loader2 } from "lucide-react";
-import { signUp } from "@/app/actions/auth";
+import { authService } from "@/services/authService";
+import { useAuthStore } from "@/stores/authStore";
 import { useNotificationStore } from "@/stores/notificationStore";
 import Link from "next/link";
 
@@ -27,6 +28,8 @@ type FormData = z.infer<typeof schema>;
 
 export default function RegisterPage() {
   const { addNotification } = useNotificationStore();
+  const { setAuth } = useAuthStore();
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -40,20 +43,21 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const formData = new globalThis.FormData();
-      formData.append("full_name", data.full_name);
-      formData.append("email", data.email);
-      formData.append("password", data.password);
-      formData.append("role", data.role);
+      // First register via backend
+      const result = await authService.register({
+        email: data.email,
+        password: data.password,
+        role: data.role,
+        full_name: data.full_name,
+      });
 
-      const result = await signUp(formData);
-
-      if (result?.error) {
-        addNotification({ type: "error", title: "Registration failed", message: result.error });
-      }
-      // If successful, the action will redirect
-    } catch (err: unknown) {
-      addNotification({ type: "error", title: "Registration failed", message: "An unexpected error occurred." });
+      // Assuming the backend automatically issues a token on registration, or we redirect to login
+      // We will redirect to login to be safe, with a success message
+      addNotification({ type: "success", title: "Registration successful", message: "Please log in to continue." });
+      router.push("/login");
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.detail || err.message || "An unexpected error occurred.";
+      addNotification({ type: "error", title: "Registration failed", message: errorMsg });
     }
   };
 

@@ -311,10 +311,10 @@ export function normalizeDashboardData(
   const differential_diagnosis: DifferentialDiagnosis[] = Array.isArray(rawDiff)
     ? rawDiff.map((item: RawData) => {
       if (typeof item === "string") {
-        return { diagnosis: item, confidence: 0.8 };
+        return { diagnosis: item, confidence: undefined };
       }
       // Confidence
-      let confidence = 0.5;
+      let confidence = undefined;
       if (typeof item.confidence === "number") {
         confidence = item.confidence > 1 ? item.confidence / 100 : item.confidence;
       } else if (typeof item.confidence_score === "number") {

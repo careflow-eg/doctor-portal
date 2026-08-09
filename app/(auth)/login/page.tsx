@@ -6,7 +6,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Eye, EyeOff, Stethoscope, Loader2 } from "lucide-react";
-import { signIn } from "@/app/actions/auth";
+import { useAuthStore } from "@/stores/authStore";
+import { authService } from "@/services/authService";
 import { useNotificationStore } from "@/stores/notificationStore";
 import Link from "next/link";
 
@@ -19,6 +20,8 @@ type FormData = z.infer<typeof schema>;
 
 export default function LoginPage() {
   const { addNotification } = useNotificationStore();
+  const { setAuth } = useAuthStore();
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -29,18 +32,20 @@ export default function LoginPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const formData = new globalThis.FormData();
-      formData.append("email", data.email);
-      formData.append("password", data.password);
-
-      const result = await signIn(formData);
+      // Authenticate with the backend API
+      const result = await authService.login({
+        username: data.email,
+        password: data.password,
+      });
       
-      if (result?.error) {
-        addNotification({ type: "error", title: "Login failed", message: result.error });
-      }
-      // If successful, the action will redirect
-    } catch (err: unknown) {
-      addNotification({ type: "error", title: "Login failed", message: "An unexpected error occurred." });
+      // Store the user and token in the global Zustand state and localStorage
+      setAuth(result.user, result.access_token);
+      
+      addNotification({ type: "success", title: "Login successful", message: "Welcome back to CareFlow." });
+      router.push("/dashboard");
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.detail || err.message || "An unexpected error occurred.";
+      addNotification({ type: "error", title: "Login failed", message: errorMsg });
     }
   };
 
