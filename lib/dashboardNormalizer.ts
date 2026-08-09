@@ -314,16 +314,13 @@ export function normalizeDashboardData(
         return { diagnosis: item, confidence: undefined };
       }
       // Confidence
-      let confidence = undefined;
+      let confidence: number | string | undefined = undefined;
       if (typeof item.confidence === "number") {
         confidence = item.confidence > 1 ? item.confidence / 100 : item.confidence;
       } else if (typeof item.confidence_score === "number") {
         confidence = item.confidence_score > 1 ? item.confidence_score / 100 : item.confidence_score;
       } else if (typeof item.confidence_level === "string") {
-        const lvl = item.confidence_level.toLowerCase();
-        if (lvl.includes("high")) confidence = 0.85;
-        else if (lvl.includes("med")) confidence = 0.65;
-        else if (lvl.includes("low")) confidence = 0.45;
+        confidence = item.confidence_level.toLowerCase();
       }
 
       // Supporting / Against evidence

@@ -13,7 +13,11 @@ export function DifferentialDiagnosis({ diagnoses }: DifferentialDiagnosisProps)
   const [expanded, setExpanded] = useState<number | null>(0);
 
   const list = Array.isArray(diagnoses) ? diagnoses : [];
-  const sorted = [...list].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
+  const sorted = [...list].sort((a, b) => {
+    const aVal = typeof a.confidence === 'number' ? a.confidence : (a.confidence === 'high' || a.confidence === 'High' ? 0.9 : a.confidence === 'medium' || a.confidence === 'Medium' ? 0.5 : 0);
+    const bVal = typeof b.confidence === 'number' ? b.confidence : (b.confidence === 'high' || b.confidence === 'High' ? 0.9 : b.confidence === 'medium' || b.confidence === 'Medium' ? 0.5 : 0);
+    return bVal - aVal;
+  });
 
   return (
     <div className="glass-card rounded-2xl border border-border p-5">
@@ -61,16 +65,13 @@ export function DifferentialDiagnosis({ diagnoses }: DifferentialDiagnosisProps)
                   </div>
                 </div>
 
-                {/* Confidence bar */}
+                {/* Qualitative label */}
                 <div className="hidden sm:flex items-center gap-2 shrink-0">
-                  <div className="w-20 h-2 rounded-full bg-border overflow-hidden">
-                    <div
-                      className={cn("h-full rounded-full", i === 0 ? "bg-careflow-teal" : "bg-muted-foreground/50")}
-                      style={{ width: `${Math.round((dx.confidence ?? 0.5) * 100)}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-semibold text-foreground w-10 text-right">
-                    {Math.round((dx.confidence ?? 0.5) * 100)}%
+                  <span className="text-xs font-semibold text-foreground bg-muted px-2 py-1 rounded capitalize">
+                    {typeof dx.confidence === 'string' ? dx.confidence : 
+                     (typeof dx.confidence === 'number' ? 
+                       (dx.confidence > 0.7 ? "High" : dx.confidence > 0.4 ? "Medium" : "Low") 
+                       : "Unknown")}
                   </span>
                 </div>
 
