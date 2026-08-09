@@ -41,7 +41,7 @@ export interface RadiologyInsight {
 
 export interface DifferentialDiagnosis {
   diagnosis: string;
-  confidence: number;
+  confidence?: number;
   icd_code?: string;
   supporting_evidence?: string[];
   against_evidence?: string[];
