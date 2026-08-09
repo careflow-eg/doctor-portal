@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { Upload, X, MousePointer2 } from "lucide-react";
-import Image from "next/image";
 
 export interface BoundingBox {
   x1: number;

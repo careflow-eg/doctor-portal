@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { BoundingBoxDrawer, BoundingBox } from "./components/BoundingBoxDrawer";
 import { radiologyPickerService, SegmentationResponse } from "@/services/radiologyPickerService";
 import { Scan, Activity, Zap, CheckCircle2, RotateCcw } from "lucide-react";
