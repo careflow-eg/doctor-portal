@@ -1,4 +1,4 @@
-// API client with JWT auth and auto-refresh
+// API client with JWT auth
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from "axios";
 
 /**
@@ -40,7 +40,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor — handle 401 and token refresh
+// Response interceptor — handle 401
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -48,7 +48,6 @@ api.interceptors.response.use(
       // Clear tokens and redirect to login
       if (typeof window !== "undefined") {
         localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
         localStorage.removeItem("careflow_user");
         window.location.href = "/login";
       }
