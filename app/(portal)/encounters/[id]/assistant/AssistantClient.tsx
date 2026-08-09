@@ -170,9 +170,12 @@ export function AssistantClient({ id }: { id: string }) {
                       {msg.citations && msg.citations.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-border/50">
                           <p className="text-[10px] font-medium opacity-70 mb-1">Sources</p>
-                          {msg.citations.map((c, i) => (
-                            <p key={i} className="text-[11px] opacity-60 line-clamp-1">{c}</p>
-                          ))}
+                          {msg.citations.map((c, i) => {
+                            const text = typeof c === "string" ? c : `[${c.source_type || "Source"}] ${c.content_snippet || ""}`;
+                            return (
+                              <p key={i} className="text-[11px] opacity-60 line-clamp-1">{text}</p>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

@@ -104,7 +104,7 @@ export interface AssistantMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
-  citations?: string[];
+  citations?: any[];
   sources?: string[];
   timestamp: string;
 }
@@ -112,7 +112,7 @@ export interface AssistantMessage {
 export interface AssistantResponse {
   answer?: string;
   response?: string;
-  citations?: string[];
+  citations?: any[];
   sources?: string[];
   data?: Record<string, unknown>;
 }
