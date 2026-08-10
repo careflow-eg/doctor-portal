@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const BASE_URL = process.env.NEXT_PUBLIC_MEDSAM2_API_URL || "https://api.cairflowai.health";
-const API_PREFIX = process.env.NEXT_PUBLIC_MEDSAM2_API_PREFIX ?? "";
+const API_PREFIX = process.env.NEXT_PUBLIC_MEDSAM2_API_PREFIX ?? "/api/v1";
+
 
 
 export interface SegmentationResponse {

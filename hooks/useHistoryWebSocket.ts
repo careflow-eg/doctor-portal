@@ -6,7 +6,8 @@ import { HistoryEvent, TranscriptEntry } from "@/types/dashboard";
 const WS_BASE = (process.env.NEXT_PUBLIC_WS_URL ?? "wss://api.cairflowai.health")
   .replace("http://", "ws://")
   .replace("https://", "wss://");
-const WS_PREFIX = process.env.NEXT_PUBLIC_WS_PREFIX ?? "";
+const WS_PREFIX = process.env.NEXT_PUBLIC_WS_PREFIX ?? "/api/v1";
+
 
 
 type ConnectionState = "disconnected" | "connecting" | "connected" | "error" | "completed";

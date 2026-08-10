@@ -2,7 +2,8 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from "axios";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.cairflowai.health";
-const API_PREFIX = process.env.NEXT_PUBLIC_API_PREFIX ?? "";
+const API_PREFIX = process.env.NEXT_PUBLIC_API_PREFIX ?? "/api/v1";
+
 
 export const api: AxiosInstance = axios.create({
   baseURL: `${BASE_URL.replace(/\/$/, "")}${API_PREFIX}`,
