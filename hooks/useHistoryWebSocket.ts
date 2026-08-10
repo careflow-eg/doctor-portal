@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { HistoryEvent, TranscriptEntry } from "@/types/dashboard";
 
-const WS_BASE = (process.env.NEXT_PUBLIC_WS_URL ?? "wss://careflow-workflow-orchestrator.up.railway.app")
+const WS_BASE = (process.env.NEXT_PUBLIC_WS_URL ?? "wss://api.cairflowai.health")
   .replace("http://", "ws://")
   .replace("https://", "wss://");
+const WS_PREFIX = process.env.NEXT_PUBLIC_WS_PREFIX ?? "";
+
 
 type ConnectionState = "disconnected" | "connecting" | "connected" | "error" | "completed";
 
@@ -52,7 +54,8 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
     setConnectionState("connecting");
     setError(null);
 
-    const url = `${WS_BASE}/api/v1/encounters/${encounterId}/ws${token ? `?token=${token}` : ""}`;
+    const url = `${WS_BASE.replace(/\/$/, "")}${WS_PREFIX}/encounters/${encounterId}/ws${token ? `?token=${token}` : ""}`;
+
     const socket = new WebSocket(url);
     ws.current = socket;
 

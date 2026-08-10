@@ -1,11 +1,12 @@
 // API client with JWT auth and auto-refresh
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from "axios";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://careflow-workflow-orchestrator.up.railway.app";
-const API_PREFIX = "/api/v1";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.cairflowai.health";
+const API_PREFIX = process.env.NEXT_PUBLIC_API_PREFIX ?? "";
 
 export const api: AxiosInstance = axios.create({
-  baseURL: `${BASE_URL}${API_PREFIX}`,
+  baseURL: `${BASE_URL.replace(/\/$/, "")}${API_PREFIX}`,
+
   headers: {
     "Content-Type": "application/json",
   },
@@ -51,8 +52,9 @@ export function createFormDataApi() {
       ? localStorage.getItem("access_token")
       : null;
   return axios.create({
-    baseURL: `${BASE_URL}${API_PREFIX}`,
+    baseURL: `${BASE_URL.replace(/\/$/, "")}${API_PREFIX}`,
     headers: {
+
       "Content-Type": "multipart/form-data",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },

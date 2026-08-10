@@ -1,7 +1,8 @@
 import axios from "axios";
 
-const BASE_URL = process.env.NEXT_PUBLIC_MEDSAM2_API_URL || "https://hossam-elsherbiny95--medsam2-segmentation-fastapi-app.modal.run";
-const API_PREFIX = "/api/v1";
+const BASE_URL = process.env.NEXT_PUBLIC_MEDSAM2_API_URL || "https://api.cairflowai.health";
+const API_PREFIX = process.env.NEXT_PUBLIC_MEDSAM2_API_PREFIX ?? "";
+
 
 export interface SegmentationResponse {
   success: boolean;
@@ -30,8 +31,9 @@ export const radiologyPickerService = {
     // We don't attach the standard app bearer token because this is an external ML service
     // If it requires authentication in the future, we can add it here.
     const { data } = await axios.post<SegmentationResponse>(
-      `${BASE_URL}${API_PREFIX}/segment`,
+      `${BASE_URL.replace(/\/$/, "")}${API_PREFIX}/segment`,
       formData,
+
       {
         headers: {
           "Content-Type": "multipart/form-data",
