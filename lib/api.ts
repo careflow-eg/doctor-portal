@@ -39,7 +39,11 @@ api.interceptors.response.use(
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
         localStorage.removeItem("careflow_user");
-        window.location.href = "/login";
+        
+        const pathname = window.location.pathname;
+        if (pathname !== "/login" && pathname !== "/register") {
+          window.location.href = "/login";
+        }
       }
     }
     return Promise.reject(error);
