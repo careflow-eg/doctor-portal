@@ -263,8 +263,8 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
       </div>
 
       {/* Transcript Timeline */}
-      <div className="flex-1 glass-card rounded-2xl border border-border overflow-hidden flex flex-col p-4">
-        <TranscriptTimeline transcript={transcript} />
+      <div className="flex-1 glass-card rounded-2xl border border-border overflow-hidden flex flex-col p-4 overflow-y-auto">
+        <TranscriptTimeline entries={transcript} />
         <div ref={transcriptBottomRef} />
       </div>
 
