@@ -45,40 +45,41 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false, onTermin
           const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
           console.log("WebSocket message received:", data);
 
-          // Evaluate should_terminate before showing any next question
-          const stepIdx = data.step_index || (data.data && data.data.step_index) || 0;
-          const shouldTerminate = Boolean(
-            data.should_terminate === true ||
+          // 1. Check should_continue === false or should_terminate === true
+          const isTerminated = Boolean(
             data.should_continue === false ||
-            (data.data && (data.data.should_terminate === true || data.data.should_continue === false)) ||
-            (data.metrics && data.metrics.should_terminate === true) ||
-            (data.data && data.data.metrics && data.data.metrics.should_terminate === true) ||
-            data.is_completed ||
+            data.should_terminate === true ||
+            (data.data && (data.data.should_continue === false || data.data.should_terminate === true)) ||
+            data.is_completed === true ||
             data.event_type === "interview_completed" ||
-            data.status === "COMPLETED" ||
-            (stepIdx >= 10)
+            data.status === "COMPLETED"
           );
 
-          if (shouldTerminate) {
-            const staticCompletionMsg = "شكراً لك. تم الانتهاء من تجميع التاريخ الطبي بنجاح. وجاري تحويل البيانات إلى التقرير السريري.";
-            setCurrentQuestion(staticCompletionMsg);
+          if (isTerminated) {
+            const completionMessage =
+              data.next_question_arabic ||
+              data.next_question_english ||
+              data.message ||
+              "تم الانتهاء من تجميع التاريخ الطبي بنجاح.";
+
+            setCurrentQuestion(completionMessage);
             setTranscript((prev) => [
               ...prev,
-              { role: "assistant", text: staticCompletionMsg, content: staticCompletionMsg, timestamp: new Date().toISOString() },
+              { role: "assistant", text: completionMessage, content: completionMessage, timestamp: new Date().toISOString() },
             ]);
             setConnectionState("completed");
 
             try {
               await historyService.finishHistorySession(encounterId);
             } catch (finishErr) {
-              console.warn("Error calling finish endpoint on WS terminate:", finishErr);
+              console.warn("Error triggering finishHistorySession on WebSocket termination:", finishErr);
             }
 
             onTerminate?.();
             return;
           }
 
-          // If not terminating, show the next question as normal
+          // 2. If should_continue is true, render the next question from backend
           const aiText =
             data.next_question_arabic ||
             data.next_question_english ||

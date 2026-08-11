@@ -5,7 +5,7 @@ import { useHistoryWebSocket } from "@/hooks/useHistoryWebSocket";
 import { historyService } from "@/services/historyService";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { TranscriptTimeline } from "./TranscriptTimeline";
-import { Bot, Wifi, WifiOff, Loader2, Send, Mic, MicOff, CheckCircle, Play } from "lucide-react";
+import { Bot, Wifi, WifiOff, Loader2, Send, Mic, MicOff, CheckCircle, Play, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HistoryCollectionProps {
@@ -57,6 +57,8 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
     },
   });
 
+  const isInterviewFinished = connectionState === "completed";
+
   // Auto-scroll transcript to latest message
   useEffect(() => {
     transcriptBottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -69,22 +71,25 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
       setSessionStarted(true);
 
       const data = await historyService.startHistorySession(encounterId);
-      const stepIdx = (data?.step_index as number) || ((data?.data as Record<string, unknown>)?.step_index as number) || 0;
 
-      const shouldTerminate = Boolean(
-        data?.should_terminate === true ||
+      const isTerminated = Boolean(
         data?.should_continue === false ||
-        (data?.data as Record<string, unknown>)?.should_terminate === true ||
+        data?.should_terminate === true ||
         (data?.data as Record<string, unknown>)?.should_continue === false ||
-        data?.is_completed ||
-        data?.status === "COMPLETED" ||
-        stepIdx >= 10
+        (data?.data as Record<string, unknown>)?.should_terminate === true ||
+        data?.is_completed === true ||
+        data?.status === "COMPLETED"
       );
 
-      if (shouldTerminate) {
-        const staticCompletionMsg = "شكراً لك. تم الانتهاء من تجميع التاريخ الطبي بنجاح. وجاري تحويل البيانات إلى التقرير السريري.";
-        setCurrentQuestion(staticCompletionMsg);
-        addAssistantMessage(staticCompletionMsg);
+      if (isTerminated) {
+        const completionMsg =
+          (data as Record<string, string>)?.next_question_arabic ||
+          (data as Record<string, string>)?.next_question_english ||
+          (data as Record<string, string>)?.message ||
+          "تم الانتهاء من تجميع التاريخ الطبي بنجاح.";
+
+        setCurrentQuestion(completionMsg);
+        addAssistantMessage(completionMsg);
         await handleFinish();
         return;
       }
@@ -93,11 +98,12 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
         (data as Record<string, string>).initial_question_arabic ||
         (data as Record<string, string>).initial_question_english ||
         (data as Record<string, string>).question ||
-        (data as Record<string, string>).message ||
-        "أهلاً بك. ايه العرض أو المشكلة الطبية اللي بتعاني منها النهاردة؟";
+        (data as Record<string, string>).message;
 
-      setCurrentQuestion(initialQuestion);
-      addAssistantMessage(initialQuestion);
+      if (initialQuestion) {
+        setCurrentQuestion(initialQuestion);
+        addAssistantMessage(initialQuestion);
+      }
 
       addNotification({
         type: "success",
@@ -107,9 +113,6 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
     } catch (err) {
       console.warn("REST start session failed, continuing on WebSocket stream:", err);
       setSessionStarted(true);
-      const fallbackInit = "أهلاً بك. ايه العرض أو المشكلة الطبية اللي بتعاني منها النهاردة؟";
-      setCurrentQuestion(fallbackInit);
-      addAssistantMessage(fallbackInit);
     } finally {
       setIsStarting(false);
     }
@@ -117,7 +120,7 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
 
   const handleSendText = async () => {
     const userText = text.trim();
-    if (!userText || isSending) return;
+    if (!userText || isSending || isInterviewFinished) return;
 
     setText("");
     setIsSending(true);
@@ -125,32 +128,35 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
     // 1. Add patient turn to UI timeline
     addPatientMessage(userText);
 
-    // 2. Primary: Send via real-time WebSocket stream (ws.onmessage checks should_terminate)
+    // 2. Primary: Send via real-time WebSocket stream (useHistoryWebSocket evaluates should_continue)
     if (connectionState === "connected") {
       sendTextWS(userText);
       setIsSending(false);
       return;
     }
 
-    // 3. Fallback: If WebSocket is disconnected, process via REST API
+    // 3. Fallback: REST API
     try {
       const data = await historyService.processTextTurn(encounterId, userText);
-      const stepIdx = (data?.step_index as number) || ((data?.data as Record<string, unknown>)?.step_index as number) || 0;
 
-      const shouldTerminate = Boolean(
-        data?.should_terminate === true ||
+      const isTerminated = Boolean(
         data?.should_continue === false ||
-        (data?.data as Record<string, unknown>)?.should_terminate === true ||
+        data?.should_terminate === true ||
         (data?.data as Record<string, unknown>)?.should_continue === false ||
-        data?.is_completed ||
-        data?.status === "COMPLETED" ||
-        stepIdx >= 10
+        (data?.data as Record<string, unknown>)?.should_terminate === true ||
+        data?.is_completed === true ||
+        data?.status === "COMPLETED"
       );
 
-      if (shouldTerminate) {
-        const staticCompletionMsg = "شكراً لك. تم الانتهاء من تجميع التاريخ الطبي بنجاح. وجاري تحويل البيانات إلى التقرير السريري.";
-        setCurrentQuestion(staticCompletionMsg);
-        addAssistantMessage(staticCompletionMsg);
+      if (isTerminated) {
+        const completionMsg =
+          (data as Record<string, string>)?.next_question_arabic ||
+          (data as Record<string, string>)?.next_question_english ||
+          (data as Record<string, string>)?.message ||
+          "تم الانتهاء من تجميع التاريخ الطبي بنجاح.";
+
+        setCurrentQuestion(completionMsg);
+        addAssistantMessage(completionMsg);
         await handleFinish();
         return;
       }
@@ -179,6 +185,8 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
   };
 
   const handleVoiceToggle = async () => {
+    if (isInterviewFinished) return;
+
     if (isRecording) {
       mediaRecorder.current?.stop();
       setIsRecording(false);
@@ -207,22 +215,25 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
           try {
             const data = await historyService.processAudioTurn(encounterId, blob, filename);
             addNotification({ type: "info", title: "Audio response processed" });
-            const stepIdx = (data?.step_index as number) || ((data?.data as Record<string, unknown>)?.step_index as number) || 0;
 
-            const shouldTerminate = Boolean(
-              data?.should_terminate === true ||
+            const isTerminated = Boolean(
               data?.should_continue === false ||
-              (data?.data as Record<string, unknown>)?.should_terminate === true ||
+              data?.should_terminate === true ||
               (data?.data as Record<string, unknown>)?.should_continue === false ||
-              data?.is_completed ||
-              data?.status === "COMPLETED" ||
-              stepIdx >= 10
+              (data?.data as Record<string, unknown>)?.should_terminate === true ||
+              data?.is_completed === true ||
+              data?.status === "COMPLETED"
             );
 
-            if (shouldTerminate) {
-              const staticCompletionMsg = "شكراً لك. تم الانتهاء من تجميع التاريخ الطبي بنجاح. وجاري تحويل البيانات إلى التقرير السريري.";
-              setCurrentQuestion(staticCompletionMsg);
-              addAssistantMessage(staticCompletionMsg);
+            if (isTerminated) {
+              const completionMsg =
+                (data as Record<string, string>)?.next_question_arabic ||
+                (data as Record<string, string>)?.next_question_english ||
+                (data as Record<string, string>)?.message ||
+                "تم الانتهاء من تجميع التاريخ الطبي بنجاح.";
+
+              setCurrentQuestion(completionMsg);
+              addAssistantMessage(completionMsg);
               await handleFinish();
               return;
             }
@@ -268,7 +279,7 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
     connecting: "Connecting WS...",
     connected: "WebSocket Connected",
     error: "WebSocket Error",
-    completed: "Interview Complete",
+    completed: "Interview Finished & Saved",
   };
 
   return (
@@ -284,6 +295,8 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
             <div className={cn("flex items-center gap-1.5 text-xs font-medium", statusColors[connectionState])}>
               {connectionState === "connected" ? (
                 <Wifi className="h-3 w-3" />
+              ) : connectionState === "completed" ? (
+                <Lock className="h-3 w-3 text-careflow-teal" />
               ) : (
                 <WifiOff className="h-3 w-3" />
               )}
@@ -306,7 +319,7 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
               )}
               Start Interview
             </button>
-          ) : connectionState !== "completed" ? (
+          ) : !isInterviewFinished ? (
             <button
               onClick={handleFinish}
               disabled={isFinishing}
@@ -319,7 +332,12 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
               )}
               Finish Interview
             </button>
-          ) : null}
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 text-xs font-semibold">
+              <CheckCircle className="h-4 w-4" />
+              Completed
+            </div>
+          )}
         </div>
       </div>
 
@@ -329,17 +347,20 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
         <div ref={transcriptBottomRef} />
       </div>
 
-      {/* Input controls */}
-      <div className="glass-card rounded-2xl border border-border p-3 flex items-center gap-2">
+      {/* Input controls (DISABLED when interview is finished) */}
+      <div className={cn("glass-card rounded-2xl border border-border p-3 flex items-center gap-2", isInterviewFinished && "opacity-60 bg-muted/20")}>
         <button
           onClick={handleVoiceToggle}
+          disabled={isInterviewFinished}
           className={cn(
             "flex h-11 w-11 items-center justify-center rounded-xl transition-all shrink-0",
-            isRecording
+            isInterviewFinished
+              ? "bg-muted text-muted-foreground cursor-not-allowed"
+              : isRecording
               ? "bg-destructive text-white animate-pulse"
               : "bg-muted hover:bg-muted/80 text-foreground"
           )}
-          title={isRecording ? "Stop recording" : "Record voice response"}
+          title={isInterviewFinished ? "Interview complete" : isRecording ? "Stop recording" : "Record voice response"}
         >
           {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
         </button>
@@ -354,14 +375,15 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
               handleSendText();
             }
           }}
-          placeholder="Type patient response..."
-          className="flex-1 bg-transparent px-3 py-2 text-sm text-foreground focus:outline-none placeholder:text-muted-foreground"
+          disabled={isInterviewFinished}
+          placeholder={isInterviewFinished ? "Interview completed — inputs disabled" : "Type patient response..."}
+          className="flex-1 bg-transparent px-3 py-2 text-sm text-foreground focus:outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
         />
 
         <button
           onClick={handleSendText}
-          disabled={!text.trim() || isSending}
-          className="flex h-11 w-11 items-center justify-center rounded-xl bg-careflow-teal text-white hover:bg-careflow-teal-hover transition-all disabled:opacity-40 shrink-0"
+          disabled={!text.trim() || isSending || isInterviewFinished}
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-careflow-teal text-white hover:bg-careflow-teal-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
         >
           {isSending ? (
             <Loader2 className="h-5 w-5 animate-spin" />

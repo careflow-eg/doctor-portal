@@ -61,7 +61,7 @@ export function TranscriptTimeline({ entries }: TranscriptTimelineProps) {
                 )}
                 dir="auto"
               >
-                {entry.text || entry.content}
+                {entry.content}
               </div>
               {entry.timestamp && (
                 <p className="text-[10px] text-muted-foreground mt-1 px-1">
