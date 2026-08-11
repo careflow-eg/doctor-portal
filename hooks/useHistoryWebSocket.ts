@@ -29,7 +29,6 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
       setConnectionState("connecting");
       setError(null);
 
-      // Connect to the exact WebSocket proxy endpoint on gateway
       const url = `${WS_BASE.replace(/\/$/, "")}${WS_PREFIX}/encounters/${encounterId}/ws`;
       console.log("Connecting WebSocket to:", url);
       ws.current = new WebSocket(url);
@@ -56,7 +55,7 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
             setCurrentQuestion(aiText);
             setTranscript((prev) => [
               ...prev,
-              { role: "assistant", text: aiText },
+              { role: "assistant", text: aiText, content: aiText, timestamp: new Date().toISOString() },
             ]);
           }
 
@@ -106,11 +105,17 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
   }, [sendResponse]);
 
   const addAssistantMessage = useCallback((text: string) => {
-    setTranscript((prev) => [...prev, { role: "assistant", text }]);
+    setTranscript((prev) => [
+      ...prev,
+      { role: "assistant", text, content: text, timestamp: new Date().toISOString() },
+    ]);
   }, []);
 
   const addPatientMessage = useCallback((text: string) => {
-    setTranscript((prev) => [...prev, { role: "patient", text }]);
+    setTranscript((prev) => [
+      ...prev,
+      { role: "patient", text, content: text, timestamp: new Date().toISOString() },
+    ]);
   }, []);
 
   useEffect(() => {
