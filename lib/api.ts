@@ -1,13 +1,11 @@
 // API client with JWT auth and auto-refresh
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from "axios";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.cairflowai.health";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://careflow-workflow-orchestrator.up.railway.app";
 const API_PREFIX = process.env.NEXT_PUBLIC_API_PREFIX ?? "/api/v1";
-
 
 export const api: AxiosInstance = axios.create({
   baseURL: `${BASE_URL.replace(/\/$/, "")}${API_PREFIX}`,
-
   headers: {
     "Content-Type": "application/json",
   },
@@ -33,8 +31,11 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      // Clear tokens and redirect to login
+    const requestUrl = error.config?.url || "";
+    const isAuthEndpoint = requestUrl.includes("/auth/login") || requestUrl.includes("/auth/register");
+
+    if (error.response?.status === 401 && !isAuthEndpoint) {
+      // Clear tokens and redirect to login only when accessing protected routes
       if (typeof window !== "undefined") {
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
@@ -59,16 +60,9 @@ export function createFormDataApi() {
   return axios.create({
     baseURL: `${BASE_URL.replace(/\/$/, "")}${API_PREFIX}`,
     headers: {
-
       "Content-Type": "multipart/form-data",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     timeout: 300000, // 5 min for large file uploads
   });
-}
-
-export interface ApiResponse<T> {
-  success: boolean;
-  message?: string;
-  data?: T;
 }
