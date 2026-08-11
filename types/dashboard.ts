@@ -122,20 +122,25 @@ export type HistoryEventType =
   | "connected"
   | "transcript"
   | "next_question"
+  | "question_generated"
+  | "turn_completed"
   | "interview_completed"
   | "error"
   | "status";
 
 export interface HistoryEvent {
-  type: HistoryEventType;
+  type?: HistoryEventType;
+  event_type?: string;
   message?: string;
   question?: string;
+  doctor_input?: string;
   transcript?: TranscriptEntry[];
   data?: Record<string, unknown>;
 }
 
 export interface TranscriptEntry {
-  role: "patient" | "system" | "assistant";
-  content: string;
+  role: "patient" | "system" | "assistant" | "doctor";
+  content?: string;
+  text?: string;
   timestamp?: string;
 }
