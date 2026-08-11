@@ -69,13 +69,16 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
       setSessionStarted(true);
 
       const data = await historyService.startHistorySession(encounterId);
+      const stepIdx = (data?.step_index as number) || ((data?.data as Record<string, unknown>)?.step_index as number) || 0;
 
-      // Check should_terminate on start
       const shouldTerminate = Boolean(
-        data?.should_terminate ||
-        (data?.data as Record<string, unknown>)?.should_terminate ||
+        data?.should_terminate === true ||
+        data?.should_continue === false ||
+        (data?.data as Record<string, unknown>)?.should_terminate === true ||
+        (data?.data as Record<string, unknown>)?.should_continue === false ||
         data?.is_completed ||
-        data?.status === "COMPLETED"
+        data?.status === "COMPLETED" ||
+        stepIdx >= 10
       );
 
       if (shouldTerminate) {
@@ -132,13 +135,16 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
     // 3. Fallback: If WebSocket is disconnected, process via REST API
     try {
       const data = await historyService.processTextTurn(encounterId, userText);
+      const stepIdx = (data?.step_index as number) || ((data?.data as Record<string, unknown>)?.step_index as number) || 0;
 
-      // Check should_terminate before showing next question
       const shouldTerminate = Boolean(
-        data?.should_terminate ||
-        (data?.data as Record<string, unknown>)?.should_terminate ||
+        data?.should_terminate === true ||
+        data?.should_continue === false ||
+        (data?.data as Record<string, unknown>)?.should_terminate === true ||
+        (data?.data as Record<string, unknown>)?.should_continue === false ||
         data?.is_completed ||
-        data?.status === "COMPLETED"
+        data?.status === "COMPLETED" ||
+        stepIdx >= 10
       );
 
       if (shouldTerminate) {
@@ -201,13 +207,16 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
           try {
             const data = await historyService.processAudioTurn(encounterId, blob, filename);
             addNotification({ type: "info", title: "Audio response processed" });
+            const stepIdx = (data?.step_index as number) || ((data?.data as Record<string, unknown>)?.step_index as number) || 0;
 
-            // Check should_terminate before showing next question
             const shouldTerminate = Boolean(
-              data?.should_terminate ||
-              (data?.data as Record<string, unknown>)?.should_terminate ||
+              data?.should_terminate === true ||
+              data?.should_continue === false ||
+              (data?.data as Record<string, unknown>)?.should_terminate === true ||
+              (data?.data as Record<string, unknown>)?.should_continue === false ||
               data?.is_completed ||
-              data?.status === "COMPLETED"
+              data?.status === "COMPLETED" ||
+              stepIdx >= 10
             );
 
             if (shouldTerminate) {

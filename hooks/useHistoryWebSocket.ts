@@ -45,13 +45,18 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false, onTermin
           const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
           console.log("WebSocket message received:", data);
 
-          // 1. Check if should_terminate is true
+          // Evaluate should_terminate before showing any next question
+          const stepIdx = data.step_index || (data.data && data.data.step_index) || 0;
           const shouldTerminate = Boolean(
-            data.should_terminate ||
-            (data.data && data.data.should_terminate) ||
+            data.should_terminate === true ||
+            data.should_continue === false ||
+            (data.data && (data.data.should_terminate === true || data.data.should_continue === false)) ||
+            (data.metrics && data.metrics.should_terminate === true) ||
+            (data.data && data.data.metrics && data.data.metrics.should_terminate === true) ||
             data.is_completed ||
             data.event_type === "interview_completed" ||
-            data.status === "COMPLETED"
+            data.status === "COMPLETED" ||
+            (stepIdx >= 10)
           );
 
           if (shouldTerminate) {
@@ -73,7 +78,7 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false, onTermin
             return;
           }
 
-          // 2. If not terminating, show the next question as normal
+          // If not terminating, show the next question as normal
           const aiText =
             data.next_question_arabic ||
             data.next_question_english ||
