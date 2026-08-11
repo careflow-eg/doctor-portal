@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload, ImageIcon, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Upload, Image as ImageIcon, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { radiologyService } from "@/services/radiologyService";
 import { useNotificationStore } from "@/stores/notificationStore";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface RadiologyUploadProps {
@@ -13,8 +12,6 @@ interface RadiologyUploadProps {
 }
 
 type UploadState = "idle" | "uploading" | "success" | "error";
-
-const MODALITIES = ["X-Ray", "CT", "MRI", "Ultrasound"];
 
 export function RadiologyUpload({ encounterId, onSuccess }: RadiologyUploadProps) {
   const { addNotification } = useNotificationStore();
@@ -26,10 +23,9 @@ export function RadiologyUpload({ encounterId, onSuccess }: RadiologyUploadProps
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
-    const isImage = file.type.startsWith("image/");
-    const isDicom = file.type === "application/dicom" || /\.(dcm|dicom|jpg|jpeg|png|webp|tiff|bmp)$/i.test(file.name);
-    if (!isImage && !isDicom) {
-      addNotification({ type: "error", title: "Invalid file", message: "Only image files (JPEG, PNG, WEBP, DICOM .dcm) are supported." });
+    const isImg = file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp|tiff|bmp|dcm|dicom)$/i.test(file.name);
+    if (!isImg) {
+      addNotification({ type: "error", title: "Invalid file", message: "Only image files (JPG, PNG, DICOM) are supported." });
       return;
     }
 
@@ -43,9 +39,10 @@ export function RadiologyUpload({ encounterId, onSuccess }: RadiologyUploadProps
       setState("success");
       addNotification({ type: "success", title: "Radiology analysis complete!", message: "AI findings generated." });
       onSuccess?.(data);
-    } catch {
+    } catch (err: unknown) {
       setState("error");
-      addNotification({ type: "error", title: "Upload failed", message: "Could not analyze the radiology image." });
+      const msg = (err as Error)?.message || "Could not analyze the radiology image.";
+      addNotification({ type: "error", title: "Upload failed", message: msg });
     }
   };
 
@@ -60,131 +57,100 @@ export function RadiologyUpload({ encounterId, onSuccess }: RadiologyUploadProps
     <div className="glass-card rounded-2xl border border-border overflow-hidden">
       <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
         <ImageIcon className="h-5 w-5 text-purple-500" />
-        <h3 className="font-semibold text-foreground">Radiology Upload</h3>
-        <div className="ml-auto flex gap-1">
-          {MODALITIES.map((m) => (
-            <span key={m} className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 rounded px-1.5 py-0.5">
-              {m}
-            </span>
-          ))}
-        </div>
+        <h2 className="font-semibold text-foreground">Radiology Scan Analysis</h2>
       </div>
 
-      <div className="p-5">
-        <div
-          className={cn(
-            "relative rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer",
-            dragOver ? "border-purple-500 bg-purple-500/5" : "border-border hover:border-purple-400/50 hover:bg-muted/30",
-            state === "success" && "border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-950/10",
-            state === "error" && "border-destructive/50 bg-destructive/5"
-          )}
-          onClick={() => state === "idle" && inputRef.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*,.dcm,.dicom"
-            className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-          />
+      <div className="p-6">
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*,.dcm,.dicom"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFile(file);
+          }}
+        />
 
-          <div className="flex flex-col items-center gap-3 py-8 px-4 text-center">
-            {state === "idle" && (
-              <>
-                <div className="h-12 w-12 rounded-xl bg-purple-50 dark:bg-purple-950/30 flex items-center justify-center">
-                  <Upload className="h-6 w-6 text-purple-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Drop radiology image or DICOM here or{" "}
-                    <span className="text-purple-500 underline">browse</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    JPEG, PNG, WEBP, DICOM (.dcm) up to 500MB
-                  </p>
-                </div>
-              </>
+        {state === "idle" && (
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+            className={cn(
+              "flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-all",
+              dragOver
+                ? "border-careflow-teal bg-careflow-teal/5"
+                : "border-border hover:border-careflow-teal/50 hover:bg-muted/30"
             )}
-
-            {state === "uploading" && (
-              <>
-                <Loader2 className="h-10 w-10 text-purple-500 animate-spin" />
-                <div className="w-full max-w-xs">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>{fileName}</span>
-                    <span>{progress}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-border overflow-hidden">
-                    <motion.div
-                      className="h-full bg-purple-500 rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progress}%` }}
-                      transition={{ duration: 0.2 }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">Analyzing with AI radiology model...</p>
-                </div>
-              </>
-            )}
-
-            {state === "success" && (
-              <>
-                <CheckCircle className="h-10 w-10 text-emerald-500" />
-                <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Radiology analysis complete!</p>
-                {result?.findings && (
-                  <p className="text-xs text-muted-foreground max-w-xs line-clamp-2">{String(result.findings)}</p>
-                )}
-                <button
-                  onClick={(e) => { e.stopPropagation(); setState("idle"); setResult(null); }}
-                  className="text-xs text-careflow-teal hover:underline"
-                >
-                  Upload another
-                </button>
-              </>
-            )}
-
-            {state === "error" && (
-              <>
-                <AlertCircle className="h-10 w-10 text-destructive" />
-                <p className="text-sm font-semibold text-destructive">Analysis failed</p>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setState("idle"); }}
-                  className="text-xs text-careflow-teal hover:underline"
-                >
-                  Try again
-                </button>
-              </>
-            )}
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-500 mb-3">
+              <Upload className="h-6 w-6" />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">
+              Click to upload scan or drag &amp; drop
+            </p>
+            <p className="text-xs text-muted-foreground">DICOM, PNG, JPG up to 20MB</p>
           </div>
-        </div>
+        )}
 
-        <AnimatePresence>
-          {state === "success" && result && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-4 rounded-xl bg-muted/50 p-4"
+        {state === "uploading" && (
+          <div className="flex flex-col items-center py-6 text-center space-y-3">
+            <Loader2 className="h-8 w-8 text-purple-500 animate-spin" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">{fileName}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Analyzing scan with MedGemma VLM &amp; MedSAM 2.0...</p>
+            </div>
+            <div className="w-full max-w-xs bg-muted rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-purple-500 h-full transition-all duration-300 rounded-full"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {state === "success" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-emerald-500 text-sm font-semibold">
+              <CheckCircle className="h-5 w-5" />
+              <span>Analysis Complete ({fileName})</span>
+            </div>
+
+            {result && (
+              <div className="rounded-xl border border-border bg-muted/30 p-4 text-xs font-mono text-foreground space-y-2 max-h-48 overflow-y-auto">
+                <pre>{JSON.stringify(result, null, 2)}</pre>
+              </div>
+            )}
+
+            <button
+              onClick={() => {
+                setState("idle");
+                setResult(null);
+              }}
+              className="text-xs text-careflow-teal hover:underline font-medium"
             >
-              <p className="font-medium text-foreground mb-2 text-sm">AI Findings</p>
-              {Boolean(result.findings) && (
-                <div className="mb-2">
-                  <p className="text-xs font-medium text-muted-foreground">Findings</p>
-                  <p className="text-sm text-foreground">{String(result.findings)}</p>
-                </div>
-              )}
-              {Boolean(result.impression) && (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Impression</p>
-                  <p className="text-sm text-foreground">{String(result.impression)}</p>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+              Upload another scan
+            </button>
+          </div>
+        )}
+
+        {state === "error" && (
+          <div className="flex flex-col items-center py-6 text-center space-y-3">
+            <AlertCircle className="h-8 w-8 text-destructive" />
+            <p className="text-sm font-semibold text-foreground">Analysis Failed</p>
+            <button
+              onClick={() => setState("idle")}
+              className="rounded-xl bg-careflow-teal text-white px-4 py-2 text-xs font-medium hover:bg-careflow-teal-hover transition-all"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

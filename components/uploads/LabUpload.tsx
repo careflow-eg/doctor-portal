@@ -41,9 +41,10 @@ export function LabUpload({ encounterId, onSuccess }: LabUploadProps) {
       setState("success");
       addNotification({ type: "success", title: "Lab report processed!", message: "AI analysis complete." });
       onSuccess?.(data);
-    } catch {
+    } catch (err: unknown) {
       setState("error");
-      addNotification({ type: "error", title: "Upload failed", message: "Could not process the lab report." });
+      const msg = (err as Error)?.message || "Could not process the lab report.";
+      addNotification({ type: "error", title: "Upload failed", message: msg });
     }
   };
 
@@ -58,115 +59,100 @@ export function LabUpload({ encounterId, onSuccess }: LabUploadProps) {
     <div className="glass-card rounded-2xl border border-border overflow-hidden">
       <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
         <FileText className="h-5 w-5 text-blue-500" />
-        <h3 className="font-semibold text-foreground">Lab Report Upload</h3>
-        <span className="ml-auto text-xs text-muted-foreground">PDF / Image</span>
+        <h2 className="font-semibold text-foreground">Laboratory Report OCR</h2>
       </div>
 
-      <div className="p-5">
-        <div
-          className={cn(
-            "relative rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer",
-            dragOver ? "border-careflow-teal bg-careflow-teal/5" : "border-border hover:border-careflow-teal/50 hover:bg-muted/30",
-            state === "success" && "border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-950/10",
-            state === "error" && "border-destructive/50 bg-destructive/5"
-          )}
-          onClick={() => state === "idle" && inputRef.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".pdf,image/*"
-            className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-          />
+      <div className="p-6">
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".pdf,image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFile(file);
+          }}
+        />
 
-          <div className="flex flex-col items-center gap-3 py-8 px-4 text-center">
-            {state === "idle" && (
-              <>
-                <div className="h-12 w-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
-                  <Upload className="h-6 w-6 text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Drop lab report here or{" "}
-                    <span className="text-careflow-teal underline">browse</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">PDF, JPG, PNG, WEBP up to 200MB</p>
-                </div>
-              </>
+        {state === "idle" && (
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+            className={cn(
+              "flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-all",
+              dragOver
+                ? "border-careflow-teal bg-careflow-teal/5"
+                : "border-border hover:border-careflow-teal/50 hover:bg-muted/30"
             )}
-
-            {state === "uploading" && (
-              <>
-                <Loader2 className="h-10 w-10 text-blue-500 animate-spin" />
-                <div className="w-full max-w-xs">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>{fileName}</span>
-                    <span>{progress}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-border overflow-hidden">
-                    <motion.div
-                      className="h-full bg-careflow-teal rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progress}%` }}
-                      transition={{ duration: 0.2 }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">Processing with AI OCR...</p>
-                </div>
-              </>
-            )}
-
-            {state === "success" && (
-              <>
-                <CheckCircle className="h-10 w-10 text-emerald-500" />
-                <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Lab report processed!</p>
-                {result && (typeof result.summary === "string") && (
-                  <p className="text-xs text-muted-foreground max-w-xs line-clamp-3">{result.summary}</p>
-                )}
-                <button
-                  onClick={(e) => { e.stopPropagation(); setState("idle"); setResult(null); setFileName(""); }}
-                  className="text-xs text-careflow-teal hover:underline"
-                >
-                  Upload another
-                </button>
-              </>
-            )}
-
-            {state === "error" && (
-              <>
-                <AlertCircle className="h-10 w-10 text-destructive" />
-                <p className="text-sm font-semibold text-destructive">Upload failed</p>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setState("idle"); }}
-                  className="text-xs text-careflow-teal hover:underline"
-                >
-                  Try again
-                </button>
-              </>
-            )}
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-500 mb-3">
+              <Upload className="h-6 w-6" />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">
+              Click to upload or drag &amp; drop
+            </p>
+            <p className="text-xs text-muted-foreground">PDF or images up to 10MB</p>
           </div>
-        </div>
+        )}
 
-        {/* Result display */}
-        <AnimatePresence>
-          {state === "success" && result && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-4 rounded-xl bg-muted/50 p-4 text-sm"
+        {state === "uploading" && (
+          <div className="flex flex-col items-center py-6 text-center space-y-3">
+            <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">{fileName}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Extracting lab results...</p>
+            </div>
+            <div className="w-full max-w-xs bg-muted rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-blue-500 h-full transition-all duration-300 rounded-full"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {state === "success" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-emerald-500 text-sm font-semibold">
+              <CheckCircle className="h-5 w-5" />
+              <span>Processed Successfully ({fileName})</span>
+            </div>
+
+            {result && (
+              <div className="rounded-xl border border-border bg-muted/30 p-4 text-xs font-mono text-foreground space-y-2 max-h-48 overflow-y-auto">
+                <pre>{JSON.stringify(result, null, 2)}</pre>
+              </div>
+            )}
+
+            <button
+              onClick={() => {
+                setState("idle");
+                setResult(null);
+              }}
+              className="text-xs text-careflow-teal hover:underline font-medium"
             >
-              <p className="font-medium text-foreground mb-2">AI Summary</p>
-              <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans overflow-auto max-h-40">
-                {JSON.stringify(result, null, 2)}
-              </pre>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              Upload another file
+            </button>
+          </div>
+        )}
+
+        {state === "error" && (
+          <div className="flex flex-col items-center py-6 text-center space-y-3">
+            <AlertCircle className="h-8 w-8 text-destructive" />
+            <p className="text-sm font-semibold text-foreground">Processing Failed</p>
+            <button
+              onClick={() => setState("idle")}
+              className="rounded-xl bg-careflow-teal text-white px-4 py-2 text-xs font-medium hover:bg-careflow-teal-hover transition-all"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
