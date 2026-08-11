@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { HistoryEvent, TranscriptEntry } from "@/types/dashboard";
+import { historyService } from "@/services/historyService";
 
 const WS_BASE = (process.env.NEXT_PUBLIC_WS_URL ?? "wss://api.careflowai.health")
   .replace("http://", "ws://")
@@ -13,9 +14,10 @@ type ConnectionState = "disconnected" | "connecting" | "connected" | "error" | "
 interface UseHistoryWebSocketOptions {
   encounterId: string;
   autoConnect?: boolean;
+  onTerminate?: () => void;
 }
 
-export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHistoryWebSocketOptions) {
+export function useHistoryWebSocket({ encounterId, autoConnect = false, onTerminate }: UseHistoryWebSocketOptions) {
   const ws = useRef<WebSocket | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>("disconnected");
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
@@ -38,11 +40,40 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
         setConnectionState("connected");
       };
 
-      ws.current.onmessage = (event) => {
+      ws.current.onmessage = async (event) => {
         try {
           const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
           console.log("WebSocket message received:", data);
 
+          // 1. Check if should_terminate is true
+          const shouldTerminate = Boolean(
+            data.should_terminate ||
+            (data.data && data.data.should_terminate) ||
+            data.is_completed ||
+            data.event_type === "interview_completed" ||
+            data.status === "COMPLETED"
+          );
+
+          if (shouldTerminate) {
+            const staticCompletionMsg = "شكراً لك. تم الانتهاء من تجميع التاريخ الطبي بنجاح. وجاري تحويل البيانات إلى التقرير السريري.";
+            setCurrentQuestion(staticCompletionMsg);
+            setTranscript((prev) => [
+              ...prev,
+              { role: "assistant", text: staticCompletionMsg, content: staticCompletionMsg, timestamp: new Date().toISOString() },
+            ]);
+            setConnectionState("completed");
+
+            try {
+              await historyService.finishHistorySession(encounterId);
+            } catch (finishErr) {
+              console.warn("Error calling finish endpoint on WS terminate:", finishErr);
+            }
+
+            onTerminate?.();
+            return;
+          }
+
+          // 2. If not terminating, show the next question as normal
           const aiText =
             data.next_question_arabic ||
             data.next_question_english ||
@@ -59,9 +90,7 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
             ]);
           }
 
-          if (data.event_type === "interview_completed" || data.status === "COMPLETED") {
-            setConnectionState("completed");
-          } else if (data.event_type === "error" || data.error) {
+          if (data.event_type === "error" || data.error) {
             setError(data.message || data.error || "WebSocket error occurred");
           }
         } catch (e) {
@@ -84,7 +113,7 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
       setError("Failed to create WebSocket connection");
       setConnectionState("error");
     }
-  }, [encounterId]);
+  }, [encounterId, onTerminate]);
 
   const disconnect = useCallback(() => {
     if (ws.current) {

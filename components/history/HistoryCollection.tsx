@@ -7,7 +7,6 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { TranscriptTimeline } from "./TranscriptTimeline";
 import { Bot, Wifi, WifiOff, Loader2, Send, Mic, MicOff, CheckCircle, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface HistoryCollectionProps {
   encounterId: string;
@@ -26,18 +25,37 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
   const audioChunks = useRef<Blob[]>([]);
   const transcriptBottomRef = useRef<HTMLDivElement>(null);
 
+  const handleFinish = async () => {
+    setIsFinishing(true);
+    try {
+      await historyService.finishHistorySession(encounterId);
+      disconnect();
+      addNotification({ type: "success", title: "History collection complete!" });
+      onComplete?.();
+    } catch {
+      addNotification({ type: "error", title: "Failed to finish session" });
+    } finally {
+      setIsFinishing(false);
+    }
+  };
+
   const {
     connectionState,
-    currentQuestion,
     setCurrentQuestion,
     transcript,
-    error,
     connect,
     disconnect,
     sendTextWS,
     addAssistantMessage,
     addPatientMessage,
-  } = useHistoryWebSocket({ encounterId, autoConnect: true });
+  } = useHistoryWebSocket({
+    encounterId,
+    autoConnect: true,
+    onTerminate: () => {
+      addNotification({ type: "success", title: "History collection complete!" });
+      onComplete?.();
+    },
+  });
 
   // Auto-scroll transcript to latest message
   useEffect(() => {
@@ -47,12 +65,26 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
   const handleStart = async () => {
     setIsStarting(true);
     try {
-      // Connect WebSocket stream first
       connect();
       setSessionStarted(true);
 
-      // Initiate history session via API or WS
       const data = await historyService.startHistorySession(encounterId);
+
+      // Check should_terminate on start
+      const shouldTerminate = Boolean(
+        data?.should_terminate ||
+        (data?.data as Record<string, unknown>)?.should_terminate ||
+        data?.is_completed ||
+        data?.status === "COMPLETED"
+      );
+
+      if (shouldTerminate) {
+        const staticCompletionMsg = "شكراً لك. تم الانتهاء من تجميع التاريخ الطبي بنجاح. وجاري تحويل البيانات إلى التقرير السريري.";
+        setCurrentQuestion(staticCompletionMsg);
+        addAssistantMessage(staticCompletionMsg);
+        await handleFinish();
+        return;
+      }
 
       const initialQuestion =
         (data as Record<string, string>).initial_question_arabic ||
@@ -90,16 +122,32 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
     // 1. Add patient turn to UI timeline
     addPatientMessage(userText);
 
-    // 2. Primary: Send via real-time WebSocket stream
+    // 2. Primary: Send via real-time WebSocket stream (ws.onmessage checks should_terminate)
     if (connectionState === "connected") {
       sendTextWS(userText);
       setIsSending(false);
       return;
     }
 
-    // 3. Fallback: If WebSocket is reconnecting/disconnected, send via REST API turn
+    // 3. Fallback: If WebSocket is disconnected, process via REST API
     try {
       const data = await historyService.processTextTurn(encounterId, userText);
+
+      // Check should_terminate before showing next question
+      const shouldTerminate = Boolean(
+        data?.should_terminate ||
+        (data?.data as Record<string, unknown>)?.should_terminate ||
+        data?.is_completed ||
+        data?.status === "COMPLETED"
+      );
+
+      if (shouldTerminate) {
+        const staticCompletionMsg = "شكراً لك. تم الانتهاء من تجميع التاريخ الطبي بنجاح. وجاري تحويل البيانات إلى التقرير السريري.";
+        setCurrentQuestion(staticCompletionMsg);
+        addAssistantMessage(staticCompletionMsg);
+        await handleFinish();
+        return;
+      }
 
       const nextQuestion =
         (data as Record<string, string>).next_question_arabic ||
@@ -109,6 +157,7 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
         (data as Record<string, string>).message;
 
       if (nextQuestion) {
+        setCurrentQuestion(nextQuestion);
         addAssistantMessage(nextQuestion);
       }
     } catch (err) {
@@ -153,12 +202,29 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
             const data = await historyService.processAudioTurn(encounterId, blob, filename);
             addNotification({ type: "info", title: "Audio response processed" });
 
+            // Check should_terminate before showing next question
+            const shouldTerminate = Boolean(
+              data?.should_terminate ||
+              (data?.data as Record<string, unknown>)?.should_terminate ||
+              data?.is_completed ||
+              data?.status === "COMPLETED"
+            );
+
+            if (shouldTerminate) {
+              const staticCompletionMsg = "شكراً لك. تم الانتهاء من تجميع التاريخ الطبي بنجاح. وجاري تحويل البيانات إلى التقرير السريري.";
+              setCurrentQuestion(staticCompletionMsg);
+              addAssistantMessage(staticCompletionMsg);
+              await handleFinish();
+              return;
+            }
+
             const nextQuestion =
               (data as Record<string, string>).next_question_arabic ||
               (data as Record<string, string>).next_question_english ||
               (data as Record<string, string>).next_question;
 
             if (nextQuestion) {
+              setCurrentQuestion(nextQuestion);
               addAssistantMessage(nextQuestion);
             }
           } catch {
@@ -177,20 +243,6 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
           message: err instanceof Error ? err.message : "Unable to access microphone",
         });
       }
-    }
-  };
-
-  const handleFinish = async () => {
-    setIsFinishing(true);
-    try {
-      await historyService.finishHistorySession(encounterId);
-      disconnect();
-      addNotification({ type: "success", title: "History collection complete!" });
-      onComplete?.();
-    } catch {
-      addNotification({ type: "error", title: "Failed to finish session" });
-    } finally {
-      setIsFinishing(false);
     }
   };
 
@@ -278,7 +330,6 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
               ? "bg-destructive text-white animate-pulse"
               : "bg-muted hover:bg-muted/80 text-foreground"
           )}
-
           title={isRecording ? "Stop recording" : "Record voice response"}
         >
           {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
