@@ -99,6 +99,18 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
     }
   }, []);
 
+  const sendTextWS = useCallback((text: string) => {
+    sendResponse(text);
+  }, [sendResponse]);
+
+  const addAssistantMessage = useCallback((text: string) => {
+    setTranscript((prev) => [...prev, { role: "assistant", text }]);
+  }, []);
+
+  const addPatientMessage = useCallback((text: string) => {
+    setTranscript((prev) => [...prev, { role: "patient", text }]);
+  }, []);
+
   useEffect(() => {
     if (autoConnect && encounterId) {
       connect();
@@ -111,10 +123,14 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
   return {
     connectionState,
     currentQuestion,
+    setCurrentQuestion,
     transcript,
     error,
     connect,
     disconnect,
     sendResponse,
+    sendTextWS,
+    addAssistantMessage,
+    addPatientMessage,
   };
 }
