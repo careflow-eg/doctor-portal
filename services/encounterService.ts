@@ -14,22 +14,36 @@ export const encounterService = {
       console.warn("API createEncounter failed, inserting directly to Supabase:", err);
     }
 
-    // Direct Supabase fallback
+    const encounterId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `enc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const now = new Date().toISOString();
+
+    // Direct Supabase insert
     const { data: newEnc, error } = await supabase
       .from("encounters")
       .insert([
         {
+          id: encounterId,
           patient_id: payload.patient_id,
           chief_complaint: payload.chief_complaint || "Medical Encounter",
           status: "CREATED",
+          created_at: now,
+          updated_at: now,
         },
       ])
       .select("*")
       .single();
 
     if (error || !newEnc) {
+      console.error("Supabase createEncounter insert error:", error);
       throw new Error(error?.message || "Failed to create encounter in database");
     }
+
+    // Fetch patient details for the new encounter
+    const { data: patientData } = await supabase
+      .from("patients")
+      .select("*")
+      .eq("id", payload.patient_id)
+      .single();
 
     return {
       id: newEnc.id,
@@ -37,6 +51,15 @@ export const encounterService = {
       doctor_id: newEnc.doctor_id || "",
       status: newEnc.status || "CREATED",
       chief_complaint: newEnc.chief_complaint,
+      patient: patientData ? {
+        id: patientData.id,
+        mrn: patientData.mrn,
+        full_name: patientData.full_name,
+        age: patientData.age,
+        gender: patientData.gender,
+        contact_number: patientData.contact_number,
+        created_at: patientData.created_at,
+      } : undefined,
       artifacts: [],
       step_results: [],
       created_at: newEnc.created_at,

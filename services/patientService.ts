@@ -14,21 +14,28 @@ export const patientService = {
       console.warn("API createPatient failed, fallback to Supabase:", err);
     }
 
+    const patientId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `pat_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const now = new Date().toISOString();
+
     const { data: newP, error } = await supabase
       .from("patients")
       .insert([
         {
+          id: patientId,
           full_name: payload.full_name,
           mrn: payload.mrn || `MRN-${Math.floor(100000 + Math.random() * 900000)}`,
-          age: payload.age,
-          gender: payload.gender,
-          contact_number: payload.contact_number,
+          age: payload.age || 30,
+          gender: payload.gender || "Male",
+          contact_number: payload.contact_number || "",
+          created_at: now,
+          updated_at: now,
         },
       ])
       .select("*")
       .single();
 
     if (error || !newP) {
+      console.error("Supabase createPatient insert error:", error);
       throw new Error(error?.message || "Failed to create patient in database");
     }
 
