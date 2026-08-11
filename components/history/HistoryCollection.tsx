@@ -37,9 +37,9 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
     sendTextWS,
     addAssistantMessage,
     addPatientMessage,
-  } = useHistoryWebSocket({ encounterId });
+  } = useHistoryWebSocket({ encounterId, autoConnect: true });
 
-  // Auto-scroll transcript
+  // Auto-scroll transcript to latest message
   useEffect(() => {
     transcriptBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
@@ -47,10 +47,13 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
   const handleStart = async () => {
     setIsStarting(true);
     try {
-      const data = await historyService.startHistorySession(encounterId);
+      // Connect WebSocket stream first
+      connect();
       setSessionStarted(true);
 
-      // Prioritize Arabic initial question from backend
+      // Initiate history session via API or WS
+      const data = await historyService.startHistorySession(encounterId);
+
       const initialQuestion =
         (data as Record<string, string>).initial_question_arabic ||
         (data as Record<string, string>).initial_question_english ||
@@ -61,14 +64,17 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
       setCurrentQuestion(initialQuestion);
       addAssistantMessage(initialQuestion);
 
-      connect();
       addNotification({
         type: "success",
         title: "History session started",
-        message: "AI interviewer is ready.",
+        message: "AI interviewer is ready via WebSocket.",
       });
-    } catch {
-      addNotification({ type: "error", title: "Failed to start history session" });
+    } catch (err) {
+      console.warn("REST start session failed, continuing on WebSocket stream:", err);
+      setSessionStarted(true);
+      const fallbackInit = "أهلاً بك. ايه العرض أو المشكلة الطبية اللي بتعاني منها النهاردة؟";
+      setCurrentQuestion(fallbackInit);
+      addAssistantMessage(fallbackInit);
     } finally {
       setIsStarting(false);
     }
@@ -81,21 +87,20 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
     setText("");
     setIsSending(true);
 
-    // Add patient turn to UI
+    // 1. Add patient turn to UI timeline
     addPatientMessage(userText);
 
-    // If WebSocket is connected, send via WebSocket stream (WS onmessage handles AI response)
+    // 2. Primary: Send via real-time WebSocket stream
     if (connectionState === "connected") {
       sendTextWS(userText);
       setIsSending(false);
       return;
     }
 
-    // Otherwise, fallback to REST turn API
+    // 3. Fallback: If WebSocket is reconnecting/disconnected, send via REST API turn
     try {
       const data = await historyService.processTextTurn(encounterId, userText);
 
-      // Prioritize Arabic next question from backend
       const nextQuestion =
         (data as Record<string, string>).next_question_arabic ||
         (data as Record<string, string>).next_question_english ||
@@ -106,7 +111,8 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
       if (nextQuestion) {
         addAssistantMessage(nextQuestion);
       }
-    } catch {
+    } catch (err) {
+      console.error("Error processing text turn:", err);
       addNotification({
         type: "error",
         title: "Error processing turn",
@@ -145,7 +151,7 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
           stream.getTracks().forEach((t) => t.stop());
           try {
             const data = await historyService.processAudioTurn(encounterId, blob, filename);
-            addNotification({ type: "info", title: "Audio response sent" });
+            addNotification({ type: "info", title: "Audio response processed" });
 
             const nextQuestion =
               (data as Record<string, string>).next_question_arabic ||
@@ -197,11 +203,11 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
   };
 
   const statusLabels = {
-    disconnected: "REST Mode",
-    connecting: "Connecting...",
-    connected: "Real-time Live",
-    error: "REST Fallback",
-    completed: "Interview complete",
+    disconnected: "WebSocket Ready",
+    connecting: "Connecting WS...",
+    connected: "WebSocket Connected",
+    error: "WebSocket Error",
+    completed: "Interview Complete",
   };
 
   return (
@@ -256,74 +262,54 @@ export function HistoryCollection({ encounterId, onComplete }: HistoryCollection
         </div>
       </div>
 
-      {/* Current question banner */}
-      <AnimatePresence>
-        {currentQuestion && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="glass-card rounded-2xl border border-careflow-teal/30 bg-careflow-teal/5 px-5 py-4"
-          >
-            <p className="text-xs font-semibold text-careflow-teal mb-1 uppercase tracking-wider">سؤال الذكاء الاصطناعي</p>
-            <p className="text-sm font-semibold text-foreground font-sans">{currentQuestion}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Error */}
-      {error && (
-        <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-2.5 text-xs text-amber-700 dark:text-amber-400">
-          Note: {error}
-        </div>
-      )}
-
-      {/* Transcript */}
-      <div className="flex-1 glass-card rounded-2xl border border-border p-5 overflow-y-auto">
-        <TranscriptTimeline entries={transcript} />
+      {/* Transcript Timeline */}
+      <div className="flex-1 glass-card rounded-2xl border border-border overflow-hidden flex flex-col p-4">
+        <TranscriptTimeline transcript={transcript} />
         <div ref={transcriptBottomRef} />
       </div>
 
-      {/* Input area */}
-      {sessionStarted && connectionState !== "completed" && (
-        <div className="glass-card rounded-2xl border border-border p-4 flex items-center gap-3">
-          <button
-            onClick={handleVoiceToggle}
-            className={cn(
-              "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 transition-all",
-              isRecording
-                ? "bg-red-500 text-white animate-pulse"
-                : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
-            )}
-            title={isRecording ? "Stop recording" : "Record voice"}
-          >
-            {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-          </button>
+      {/* Input controls */}
+      <div className="glass-card rounded-2xl border border-border p-3 flex items-center gap-2">
+        <button
+          onClick={handleVoiceToggle}
+          className={cn(
+            "flex h-11 w-11 items-center justify-center rounded-xl transition-all shrink-0",
+            isRecording
+              ? "bg-destructive text-white animate-pulse"
+              : "bg-muted hover:bg-muted/80 text-foreground"
+          )}
 
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendText()}
-            placeholder="اكتب إجابة المريض أو استخدم الصوت..."
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none text-right"
-            dir="auto"
-            disabled={isSending}
-          />
+          title={isRecording ? "Stop recording" : "Record voice response"}
+        >
+          {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+        </button>
 
-          <button
-            onClick={handleSendText}
-            disabled={!text.trim() || isSending}
-            className="h-10 w-10 rounded-xl bg-careflow-teal hover:bg-careflow-teal-hover text-white flex items-center justify-center shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {isSending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </button>
-        </div>
-      )}
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSendText();
+            }
+          }}
+          placeholder="Type patient response..."
+          className="flex-1 bg-transparent px-3 py-2 text-sm text-foreground focus:outline-none placeholder:text-muted-foreground"
+        />
+
+        <button
+          onClick={handleSendText}
+          disabled={!text.trim() || isSending}
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-careflow-teal text-white hover:bg-careflow-teal-hover transition-all disabled:opacity-40 shrink-0"
+        >
+          {isSending ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Send className="h-5 w-5" />
+          )}
+        </button>
+      </div>
     </div>
   );
 }
