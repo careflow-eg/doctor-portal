@@ -37,12 +37,12 @@ export default function PatientsPage() {
           age: enc.patient.age || 30,
           gender: enc.patient.gender || "Male",
           phone: enc.patient.contact_number || "",
-          lastVisit: enc.created_at,
+          lastVisit: enc.created_at || new Date().toISOString(),
           encounterCount: 1,
         });
       } else {
         existing.encounterCount++;
-        if (enc.created_at > existing.lastVisit) {
+        if (enc.created_at && enc.created_at > existing.lastVisit) {
           existing.lastVisit = enc.created_at;
         }
       }
@@ -58,7 +58,7 @@ export default function PatientsPage() {
         age: p.age || 30,
         gender: p.gender || "Male",
         phone: p.contact_number || "",
-        lastVisit: p.created_at,
+        lastVisit: p.created_at || new Date().toISOString(),
         encounterCount: 0,
       });
     }

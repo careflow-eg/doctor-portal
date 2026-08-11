@@ -7,6 +7,7 @@ export interface Patient {
   age?: number;
   gender?: string;
   contact_number?: string;
+  created_at?: string;
 }
 
 export interface PatientCreate {
