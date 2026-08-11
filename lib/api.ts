@@ -27,25 +27,13 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor — handle 401 and token refresh
+// Response interceptor — handle errors without destroying local doctor session
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const requestUrl = error.config?.url || "";
-    const isAuthEndpoint = requestUrl.includes("/auth/login") || requestUrl.includes("/auth/register");
-
-    if (error.response?.status === 401 && !isAuthEndpoint) {
-      // Clear tokens and redirect to login only when accessing protected routes
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("careflow_user");
-        
-        const pathname = window.location.pathname;
-        if (pathname !== "/login" && pathname !== "/register") {
-          window.location.href = "/login";
-        }
-      }
+    // Gracefully log network or auth errors from remote endpoint without auto-redirecting to login
+    if (error.response?.status === 401) {
+      console.warn("Remote API returned 401 Unauthorized for request:", error.config?.url);
     }
     return Promise.reject(error);
   }
