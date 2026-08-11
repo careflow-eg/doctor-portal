@@ -1,9 +1,7 @@
 import axios from "axios";
 
-const BASE_URL = process.env.NEXT_PUBLIC_MEDSAM2_API_URL || "https://api.cairflowai.health";
+const BASE_URL = process.env.NEXT_PUBLIC_MEDSAM2_API_URL || "https://api.careflowai.health";
 const API_PREFIX = process.env.NEXT_PUBLIC_MEDSAM2_API_PREFIX ?? "/api/v1";
-
-
 
 export interface SegmentationResponse {
   success: boolean;
@@ -26,30 +24,27 @@ export const radiologyPickerService = {
   ): Promise<SegmentationResponse> {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("boxes", JSON.stringify(boxes));
+    formData.append("boxes_json", JSON.stringify(boxes));
     formData.append("mask_opacity", maskOpacity.toString());
 
-    // We don't attach the standard app bearer token because this is an external ML service
-    // If it requires authentication in the future, we can add it here.
-    const { data } = await axios.post<SegmentationResponse>(
-      `${BASE_URL.replace(/\/$/, "")}${API_PREFIX}/segment`,
+    const response = await axios.post<SegmentationResponse>(
+      `${BASE_URL.replace(/\/$/, "")}${API_PREFIX}/radiology/segment-box`,
       formData,
-
       {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-        timeout: 120000,
         onUploadProgress: (progressEvent) => {
-          if (onProgress && progressEvent.total) {
-            const pct = Math.round(
+          if (progressEvent.total && onProgress) {
+            const percent = Math.round(
               (progressEvent.loaded * 100) / progressEvent.total
             );
-            onProgress(pct);
+            onProgress(percent);
           }
         },
       }
     );
-    return data;
+
+    return response.data;
   },
 };

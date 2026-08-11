@@ -1,7 +1,7 @@
 // API client with JWT auth and auto-refresh
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from "axios";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://careflow-workflow-orchestrator.up.railway.app";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.careflowai.health";
 const API_PREFIX = process.env.NEXT_PUBLIC_API_PREFIX ?? "/api/v1";
 
 export const api: AxiosInstance = axios.create({

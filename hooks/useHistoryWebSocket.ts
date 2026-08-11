@@ -3,12 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { HistoryEvent, TranscriptEntry } from "@/types/dashboard";
 
-const WS_BASE = (process.env.NEXT_PUBLIC_WS_URL ?? "wss://api.cairflowai.health")
+const WS_BASE = (process.env.NEXT_PUBLIC_WS_URL ?? "wss://api.careflowai.health")
   .replace("http://", "ws://")
   .replace("https://", "wss://");
 const WS_PREFIX = process.env.NEXT_PUBLIC_WS_PREFIX ?? "/api/v1";
-
-
 
 type ConnectionState = "disconnected" | "connecting" | "connected" | "error" | "completed";
 
@@ -24,122 +22,99 @@ export function useHistoryWebSocket({ encounterId, autoConnect = false }: UseHis
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-
-  const addAssistantMessage = useCallback((content: string) => {
-    if (!content) return;
-    setCurrentQuestion(content);
-    setTranscript((prev) => {
-      const last = prev[prev.length - 1];
-      if (last && last.role === "assistant" && last.content === content) {
-        return prev;
-      }
-      return [
-        ...prev,
-        { role: "assistant", content, timestamp: new Date().toISOString() },
-      ];
-    });
-  }, []);
-
-  const addPatientMessage = useCallback((content: string) => {
-    if (!content) return;
-    setTranscript((prev) => [
-      ...prev,
-      { role: "patient", content, timestamp: new Date().toISOString() },
-    ]);
-  }, []);
-
   const connect = useCallback(() => {
-    if (ws.current?.readyState === WebSocket.OPEN) return;
+    if (!encounterId) return;
 
-    setConnectionState("connecting");
-    setError(null);
+    try {
+      setConnectionState("connecting");
+      setError(null);
 
-    const url = `${WS_BASE.replace(/\/$/, "")}${WS_PREFIX}/encounters/${encounterId}/ws${token ? `?token=${token}` : ""}`;
+      const url = `${WS_BASE.replace(/\/$/, "")}${WS_PREFIX}/ws/history/${encounterId}`;
+      ws.current = new WebSocket(url);
 
-    const socket = new WebSocket(url);
-    ws.current = socket;
+      ws.current.onopen = () => {
+        setConnectionState("connected");
+      };
 
-    socket.onopen = () => {
-      setConnectionState("connected");
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        // Prioritize Arabic question fields from backend
-        const questionText =
-          data.next_question_arabic ||
-          data.initial_question_arabic ||
-          data.next_question_english ||
-          data.initial_question_english ||
-          data.next_question ||
-          data.question ||
-          data.message;
-
-        if (data.type === "interview_completed" || data.status === "COMPLETED") {
-          setConnectionState("completed");
-          if (questionText) setCurrentQuestion(questionText);
-          return;
+      ws.current.onmessage = (event) => {
+        try {
+          const data: HistoryEvent = JSON.parse(event.data);
+          
+          if (data.event_type === "question_generated" && data.question) {
+            setCurrentQuestion(data.question);
+          } else if (data.event_type === "turn_completed") {
+            if (data.doctor_input) {
+              setTranscript((prev) => [
+                ...prev,
+                { role: "doctor", text: data.doctor_input! },
+              ]);
+            }
+            if (data.question) {
+              setTranscript((prev) => [
+                ...prev,
+                { role: "patient", text: data.question! },
+              ]);
+            }
+          } else if (data.event_type === "interview_completed") {
+            setConnectionState("completed");
+          } else if (data.event_type === "error") {
+            setError(data.message || "WebSocket error occurred");
+            setConnectionState("error");
+          }
+        } catch (e) {
+          console.error("Failed to parse WebSocket message:", e);
         }
+      };
 
-        if (questionText) {
-          addAssistantMessage(questionText);
-        }
+      ws.current.onerror = (e) => {
+        console.error("WebSocket error:", e);
+        setError("Connection error");
+        setConnectionState("error");
+      };
 
-        if (data.transcript && Array.isArray(data.transcript) && data.transcript.length > 0) {
-          setTranscript(data.transcript);
+      ws.current.onclose = () => {
+        if (connectionState !== "completed") {
+          setConnectionState("disconnected");
         }
-      } catch {
-        if (event.data) {
-          const textMsg = String(event.data);
-          addAssistantMessage(textMsg);
-        }
-      }
-    };
-
-    socket.onerror = () => {
+      };
+    } catch (e) {
+      console.error("Failed to connect WebSocket:", e);
+      setError("Failed to create connection");
       setConnectionState("error");
-      setError("WebSocket fallback to REST active.");
-    };
-
-    socket.onclose = () => {
-      if (connectionState !== "completed") {
-        setConnectionState("disconnected");
-      }
-    };
-  }, [encounterId, token, connectionState, addAssistantMessage]);
+    }
+  }, [encounterId, connectionState]);
 
   const disconnect = useCallback(() => {
-    ws.current?.close();
-    ws.current = null;
-    setConnectionState("disconnected");
+    if (ws.current) {
+      ws.current.close();
+      ws.current = null;
+      setConnectionState("disconnected");
+    }
   }, []);
 
-  const sendTextWS = useCallback((text: string) => {
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ text, user_input: text }));
+  const sendResponse = useCallback((response: string) => {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ response }));
+      setTranscript((prev) => [...prev, { role: "doctor", text: response }]);
     }
   }, []);
 
   useEffect(() => {
-    if (autoConnect) connect();
-    return () => { ws.current?.close(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoConnect]);
+    if (autoConnect && encounterId) {
+      connect();
+    }
+    return () => {
+      disconnect();
+    };
+  }, [autoConnect, encounterId]);
 
   return {
     connectionState,
     currentQuestion,
-    setCurrentQuestion,
     transcript,
-    setTranscript,
     error,
     connect,
     disconnect,
-    sendTextWS,
-    addAssistantMessage,
-    addPatientMessage,
+    sendResponse,
   };
 }
